@@ -3,6 +3,8 @@ package com.example.pickuppal
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
+import android.view.View.INVISIBLE
+import android.view.View.VISIBLE
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageView
@@ -53,6 +55,7 @@ class SignInFragment : Fragment() {
     }
 
     private lateinit var signInButton: Button
+    private lateinit var logoutButton: Button
     private lateinit var userNameTextView: TextView
     private lateinit var profilePictureImageView: ImageView
 
@@ -65,6 +68,7 @@ class SignInFragment : Fragment() {
 
         signInButton = view.findViewById(R.id.signInButton)
         userNameTextView = view.findViewById(R.id.usernameTextView)
+        logoutButton = view.findViewById(R.id.logoutButton)
         profilePictureImageView = view.findViewById(R.id.profilePictureImageView)
 
         signInButton.setOnClickListener {
@@ -94,6 +98,29 @@ class SignInFragment : Fragment() {
                                 .circleCrop()
                                 .into(profilePictureImageView)
                         }
+                        signInButton.visibility = INVISIBLE
+                        logoutButton.visibility = VISIBLE
+                        logoutButton.setOnClickListener {
+                            logoutButton.visibility = INVISIBLE
+                            lifecycleScope.launch {
+                                googleOAuthClient.signOut()
+                                viewModel.resetState()
+                                Toast.makeText(
+                                    requireContext(),
+                                    "Signed out",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                userNameTextView.text = ""
+                                profilePictureImageView.setImageDrawable(null)
+                                signInButton.visibility = VISIBLE
+
+                            }
+                        }
+                    } else {
+                        viewModel.resetState()
+                        userNameTextView.text = ""
+                        profilePictureImageView.setImageDrawable(null)
+                        logoutButton.setOnClickListener(null)
                     }
                 }
             }
