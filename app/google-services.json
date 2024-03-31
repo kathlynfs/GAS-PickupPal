@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "669911105755",
+    "project_id": "pickuppal-e450c",
+    "storage_bucket": "pickuppal-e450c.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:669911105755:android:7027f8594ea279881d0cfe",
+        "android_client_info": {
+          "package_name": "com.example.pickuppal"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4bvmsJa98KUWOLxny1wjyiav1GVS96So"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
