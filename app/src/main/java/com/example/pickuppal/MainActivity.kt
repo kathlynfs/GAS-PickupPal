@@ -15,6 +15,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.auth.api.identity.Identity
 import kotlinx.coroutines.launch
 
+import com.example.pickuppal.PostingFragment
+
 class MainActivity : AppCompatActivity() {
 //    private val googleOAuthClient by lazy {
 //        GoogleOAuthClient(
@@ -26,6 +28,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
     }
 //
 //    override fun onCreate(savedInstanceState: Bundle?) {
