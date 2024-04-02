@@ -1,12 +1,15 @@
 package com.example.pickuppal
 
 import android.content.Context
+import android.location.Address
+import android.location.Geocoder
 import android.location.Location
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import com.example.pickuppal.databinding.FragmentMapBinding
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
@@ -18,13 +21,24 @@ import com.google.android.gms.tasks.Task
 
 class MapFragment : Fragment(), OnMapReadyCallback
 {
+    private var _binding: FragmentMapBinding? = null
+
+    private val binding
+        get() = checkNotNull(_binding) {
+            "Cannot access binding because it is null. Is the view visible?"
+        }
+
     private lateinit var currentLocation: Location
 
     private lateinit var currentLocationDeterminer: CurrentLocationDeterminer
 
+    private var mapPins = mutableListOf<LatLng>()
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View?
     {
-        val view = inflater.inflate(R.layout.fragment_map, container, false)
+        _binding =
+            FragmentMapBinding.inflate(layoutInflater, container, false)
+
+        //val view = inflater.inflate(R.layout.fragment_map, container, false)
 
         var task = determineCurrentLocation()
         task.addOnSuccessListener{ location ->
@@ -48,7 +62,13 @@ class MapFragment : Fragment(), OnMapReadyCallback
             }
         }
 
-        return view
+
+        binding.addItemButton.setOnClickListener {
+            val address = "575 Commonwealth Ave, Boston, MA"
+
+        }
+
+        return binding.root
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -56,7 +76,13 @@ class MapFragment : Fragment(), OnMapReadyCallback
         val startingLocation = LatLng(currentLocation.latitude, currentLocation.longitude)
         // will not actually add marker at staring location
         // just initial practice in adding markers
-        googleMap.addMarker(MarkerOptions().position(startingLocation).title("Marker in Starting Location"))
+        for(pin in mapPins) {
+            googleMap.addMarker(
+                MarkerOptions().position(pin).title("New Pin")
+            )
+        }
+        googleMap.addMarker(
+            MarkerOptions().position(startingLocation).title("New Pin"))
         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(startingLocation, 15f))
     }
 
