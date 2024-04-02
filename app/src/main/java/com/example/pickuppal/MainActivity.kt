@@ -1,6 +1,9 @@
 package com.example.pickuppal
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.location.Location
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.AttributeSet
@@ -12,22 +15,19 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.auth.api.identity.Identity
 import kotlinx.coroutines.launch
-
-
-import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.tasks.Task
 
 import com.example.pickuppal.PostingFragment
 
-class MainActivity : AppCompatActivity(), OnMapReadyCallback {
+class MainActivity : AppCompatActivity(), CurrentLocationDeterminer {
 //    private val googleOAuthClient by lazy {
 //        GoogleOAuthClient(
 //            context = applicationContext,
@@ -35,37 +35,48 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 //        )
 //    }
 
+    private val FINE_PERMISSION_CODE = 1
+    private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+    }
 
-        val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as? SupportMapFragment
+    override fun determineCurrentLocation(): Task<Location> {
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
+        return getLastLocation()
+    }
 
-        // create boolean to determine whether or not map should be shown at a given time
-        // for initial testing, use true if you want to view map, false if not
-        if (true) {
-            if (mapFragment == null) {
-                val newMapFragment = SupportMapFragment.newInstance()
-                supportFragmentManager.beginTransaction()
-                    .add(R.id.map, newMapFragment)
-                    .commit()
+    private fun getLastLocation(): Task<Location>
+    {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+        {
+            ActivityCompat.requestPermissions(this, listOf(Manifest.permission.ACCESS_FINE_LOCATION).toTypedArray(), FINE_PERMISSION_CODE)
+        }
+
+        return fusedLocationProviderClient.getLastLocation()
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray)
+    {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if(requestCode == FINE_PERMISSION_CODE)
+        {
+            if(grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+            {
+                getLastLocation()
             }
-        } else {
-            if (mapFragment != null) {
-                supportFragmentManager.beginTransaction()
-                    .remove(mapFragment)
-                    .commit()
+            else
+            {
+                Toast.makeText(
+                    this,
+                    R.string.location_permission_denied,
+                    Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    override fun onMapReady(googleMap: GoogleMap) {
-        googleMap.addMarker(
-            MarkerOptions()
-                .position(LatLng(0.0, 0.0))
-                .title("Marker")
-        )
-    }
 
 //
 //    override fun onCreate(savedInstanceState: Bundle?) {
