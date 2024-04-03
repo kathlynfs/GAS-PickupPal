@@ -9,6 +9,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import com.example.pickuppal.databinding.FragmentMapBinding
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -38,7 +39,7 @@ class MapFragment : Fragment(), OnMapReadyCallback
         _binding =
             FragmentMapBinding.inflate(layoutInflater, container, false)
 
-        //val view = inflater.inflate(R.layout.fragment_map, container, false)
+        val sharedViewModel: SharedViewModel by activityViewModels()
 
         var task = determineCurrentLocation()
         task.addOnSuccessListener{ location ->
@@ -62,10 +63,8 @@ class MapFragment : Fragment(), OnMapReadyCallback
             }
         }
 
-
         binding.addItemButton.setOnClickListener {
-            val address = "575 Commonwealth Ave, Boston, MA"
-
+            sharedViewModel.setCurrentFragment("posting")
         }
 
         return binding.root
