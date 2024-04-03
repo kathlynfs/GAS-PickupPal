@@ -29,7 +29,11 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.tasks.Task
 
 import com.example.pickuppal.PostingFragment
+import com.google.android.gms.location.Priority.PRIORITY_LOW_POWER
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.tasks.CancellationToken
+import com.google.android.gms.tasks.CancellationTokenSource
+import com.google.android.gms.tasks.OnTokenCanceledListener
 import kotlin.math.sign
 
 class MainActivity : AppCompatActivity(), CurrentLocationDeterminer {
@@ -65,8 +69,9 @@ class MainActivity : AppCompatActivity(), CurrentLocationDeterminer {
         // by updating setCurrentFragment()
         // ex: sharedViewModel.setCurrentFragment("posting")
         // to have app open on posting screen
+        sharedViewModel.setCurrentFragment("map")
         sharedViewModel.getCurrentFragment().observe(this) { frag ->
-            if (frag == "signin")
+            if(frag == "signin")
             {
                 fragmentManager.beginTransaction()
                     .attach(signInFragment)
@@ -106,7 +111,13 @@ class MainActivity : AppCompatActivity(), CurrentLocationDeterminer {
             ActivityCompat.requestPermissions(this, listOf(Manifest.permission.ACCESS_FINE_LOCATION).toTypedArray(), FINE_PERMISSION_CODE)
         }
 
-        return fusedLocationProviderClient.getLastLocation()
+        var task = fusedLocationProviderClient.getCurrentLocation(PRIORITY_LOW_POWER, object : CancellationToken() {
+            override fun onCanceledRequested(p0: OnTokenCanceledListener) = CancellationTokenSource().token
+
+            override fun isCancellationRequested() = false
+        })
+
+        return task
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray)
@@ -127,8 +138,6 @@ class MainActivity : AppCompatActivity(), CurrentLocationDeterminer {
             }
         }
     }
-
-
 
 //    override fun onCreate(savedInstanceState: Bundle?) {
 //        super.onCreate(savedInstanceState)
