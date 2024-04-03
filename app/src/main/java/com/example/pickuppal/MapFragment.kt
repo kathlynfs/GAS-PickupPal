@@ -43,7 +43,7 @@ class MapFragment : Fragment(), OnMapReadyCallback
 
         var task = determineCurrentLocation()
         task.addOnSuccessListener{ location ->
-            if(location != null)
+            if (location != null)
             {
                 currentLocation = location
 
@@ -51,7 +51,8 @@ class MapFragment : Fragment(), OnMapReadyCallback
                     .findFragmentById(R.id.map) as SupportMapFragment
                 mapFragment.getMapAsync(this)
             }
-            else { // if a current location cannot be determined, default to Boston University
+            else
+            { // if a current location cannot be determined, default to Boston University
                 currentLocation = Location("mockedLocationProvider").apply {
                     latitude = 42.350876
                     longitude = -71.106918
@@ -71,17 +72,14 @@ class MapFragment : Fragment(), OnMapReadyCallback
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
-        // Add a marker at your current location and move the camera
         val startingLocation = LatLng(currentLocation.latitude, currentLocation.longitude)
-        // will not actually add marker at staring location
-        // just initial practice in adding markers
+
         for(pin in mapPins) {
             googleMap.addMarker(
                 MarkerOptions().position(pin).title("New Pin")
             )
         }
-        googleMap.addMarker(
-            MarkerOptions().position(startingLocation).title("New Pin"))
+
         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(startingLocation, 15f))
     }
 
