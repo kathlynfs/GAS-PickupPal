@@ -69,7 +69,7 @@ class MainActivity : AppCompatActivity(), CurrentLocationDeterminer {
         // by updating setCurrentFragment()
         // ex: sharedViewModel.setCurrentFragment("posting")
         // to have app open on posting screen
-        sharedViewModel.setCurrentFragment("map")
+        sharedViewModel.setCurrentFragment("signin")
         sharedViewModel.getCurrentFragment().observe(this) { frag ->
             if(frag == "signin")
             {
