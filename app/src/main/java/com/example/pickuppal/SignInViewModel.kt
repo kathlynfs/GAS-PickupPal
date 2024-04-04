@@ -11,6 +11,7 @@ class SignInViewModel : ViewModel() {
 
     fun onSignInResult(result: SignInResult) {
         _state.update {it.copy(
+            isSignInAttempted = true,
             isSignInSuccessful = result.data != null,
             signInError = result.errorMessage
         ) }

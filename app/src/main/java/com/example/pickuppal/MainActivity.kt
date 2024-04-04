@@ -50,52 +50,52 @@ class MainActivity : AppCompatActivity(), CurrentLocationDeterminer {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        val sharedViewModel = ViewModelProvider(this)[SharedViewModel::class.java]
-        sharedViewModel.setCurrentFragment("signin")
-
-        val fragmentManager = supportFragmentManager
-        fragmentManager.commit{
-            setReorderingAllowed(true)
-        }
-
-        // create instances of new fragments here
-        val signInFragment = fragmentManager.findFragmentById(R.id.sign_in_fragment_container) as SignInFragment
-        val mapFragment = fragmentManager.findFragmentById(R.id.map_fragment_container) as MapFragment
-        val postingFragment = fragmentManager.findFragmentById(R.id.posting_fragment_container) as PostingFragment
-
-        // while not all transitions between fragments are set up,
-        // feel free to manually change what fragment should be shown
-        // by updating setCurrentFragment()
-        // ex: sharedViewModel.setCurrentFragment("posting")
-        // to have app open on posting screen
-        sharedViewModel.setCurrentFragment("signin")
-        sharedViewModel.getCurrentFragment().observe(this) { frag ->
-            if(frag == "signin")
-            {
-                fragmentManager.beginTransaction()
-                    .attach(signInFragment)
-                    .detach(mapFragment)
-                    .detach(postingFragment)
-                    .commit()
-            }
-            else if(frag == "map")
-            {
-                fragmentManager.beginTransaction()
-                    .detach(signInFragment)
-                    .attach(mapFragment)
-                    .detach(postingFragment)
-                    .commit()
-            }
-            else if (frag == "posting")
-            {
-                fragmentManager.beginTransaction()
-                    .detach(signInFragment)
-                    .detach(mapFragment)
-                    .attach(postingFragment)
-                    .commit()
-            }
-        }
+//
+//        val sharedViewModel = ViewModelProvider(this)[SharedViewModel::class.java]
+//        sharedViewModel.setCurrentFragment("signin")
+//
+//        val fragmentManager = supportFragmentManager
+//        fragmentManager.commit{
+//            setReorderingAllowed(true)
+//        }
+//
+//        // create instances of new fragments here
+//        val signInFragment = fragmentManager.findFragmentById(R.id.sign_in_fragment_container) as SignInFragment
+//        val mapFragment = fragmentManager.findFragmentById(R.id.map_fragment_container) as MapFragment
+//        val postingFragment = fragmentManager.findFragmentById(R.id.posting_fragment_container) as PostingFragment
+//
+//        // while not all transitions between fragments are set up,
+//        // feel free to manually change what fragment should be shown
+//        // by updating setCurrentFragment()
+//        // ex: sharedViewModel.setCurrentFragment("posting")
+//        // to have app open on posting screen
+//        sharedViewModel.setCurrentFragment("signin")
+//        sharedViewModel.getCurrentFragment().observe(this) { frag ->
+//            if(frag == "signin")
+//            {
+//                fragmentManager.beginTransaction()
+//                    .attach(signInFragment)
+//                    .detach(mapFragment)
+//                    .detach(postingFragment)
+//                    .commit()
+//            }
+//            else if(frag == "map")
+//            {
+//                fragmentManager.beginTransaction()
+//                    .detach(signInFragment)
+//                    .attach(mapFragment)
+//                    .detach(postingFragment)
+//                    .commit()
+//            }
+//            else if (frag == "posting")
+//            {
+//                fragmentManager.beginTransaction()
+//                    .detach(signInFragment)
+//                    .detach(mapFragment)
+//                    .attach(postingFragment)
+//                    .commit()
+//            }
+//        }
     }
 
 
@@ -138,47 +138,4 @@ class MainActivity : AppCompatActivity(), CurrentLocationDeterminer {
             }
         }
     }
-
-//    override fun onCreate(savedInstanceState: Bundle?) {
-//        super.onCreate(savedInstanceState)
-//        setContent {
-//            val viewModel = viewModel<SignInViewModel>()
-//            val state by viewModel.state.collectAsStateWithLifecycle()
-//            val launcher = rememberLauncherForActivityResult(
-//                contract = ActivityResultContracts.StartIntentSenderForResult(),
-//                onResult = { result ->
-//                    if (result.resultCode == RESULT_OK) {
-//                        lifecycleScope.launch {
-//                            val signInResult = googleOAuthClient.signInWithIntent(
-//                                intent = result.data ?: return@launch
-//                            )
-//                            viewModel.onSignInResult(signInResult)
-//                        }
-//                    }
-//                }
-//            )
-//
-//            LaunchedEffect(key1 = state.isSignInSuccessful) {
-//                if (state.isSignInSuccessful) {
-//                    Toast.makeText(
-//                        applicationContext,
-//                        "Sign in successful",
-//                        Toast.LENGTH_LONG
-//                    ).show()
-//                }
-//            }
-//            SignInScreen(state = state,
-//                onSignInClick = {
-//                    lifecycleScope.launch {
-//                        val signInIntent = googleOAuthClient.signIn()
-//                        launcher.launch(
-//                            IntentSenderRequest.Builder(
-//                                signInIntent ?: return@launch
-//                            ).build()
-//                        )
-//                    }
-//                }
-//            )
-//        }
-//    }
 }
