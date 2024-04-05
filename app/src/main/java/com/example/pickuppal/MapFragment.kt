@@ -167,7 +167,6 @@ class MapFragment : Fragment() {
                 }
             }
 
-            // add item
             ExtendedFloatingActionButton(
                 onClick = {
                     val action = MapFragmentDirections.actionMapFragmentToPostingFragment(user)
@@ -180,7 +179,6 @@ class MapFragment : Fragment() {
                 Icon(Icons.Default.Add, contentDescription = "Add Item", tint = Color.Black)
             }
 
-            // setting menu
             ExtendedFloatingActionButton(
                 onClick = { isSettingsMenuOpen.value = true },
                 modifier = Modifier

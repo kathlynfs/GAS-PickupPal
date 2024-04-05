@@ -1,10 +1,10 @@
 package com.example.pickuppal
 
 data class UserStatistics(
-    val userID: String,
-    val averageRating: Float = 0.0f,
-    val numItemsPosted: Int,
-    val numItemsClaimed: Int
+    var userID: String = "",
+    var averageRating: Float = 0.0f,
+    var numItemsPosted: Int = 0,
+    var numItemsClaimed: Int = 0
 ) {
     fun toMap(): Map<String, Any> {
         return mapOf(

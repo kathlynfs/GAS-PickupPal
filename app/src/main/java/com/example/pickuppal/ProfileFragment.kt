@@ -1,7 +1,11 @@
 package com.example.pickuppal
 
+import FirebaseAPI
+import PostingDataListCallBack
+import UserStatisticsCallback
 import android.os.Bundle
 import android.provider.ContactsContract.Profile
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -24,6 +28,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -45,69 +50,75 @@ import kotlin.math.floor
 
 class ProfileFragment : Fragment() {
     private val args: ProfileFragmentArgs by navArgs()
+    private val firebaseAPI = FirebaseAPI()
+    private val listItems = mutableListOf<ListingItem>()
 
-    val listItems = listOf(
-        ListingItem(
-            title = "Cozy Apartment",
-            description = "A cozy apartment with modern amenities, perfect for a couple or solo traveler."
-        ),
-        ListingItem(
-            title = "Spacious House",
-            description = "A spacious house with a beautiful backyard, ideal for families or groups."
-        ),
-        ListingItem(
-            title = "Luxury Villa",
-            description = "Experience luxury living in this stunning villa with a private pool and breathtaking views."
-        ),
-        ListingItem(
-            title = "Downtown Studio",
-            description = "A stylish studio apartment in the heart of the city, close to restaurants and attractions."
-        ),
-        ListingItem(
-            title = "Beachfront Condo",
-            description = "Enjoy a relaxing getaway in this beachfront condo with direct access to the sand and sea."
-        ),
-        ListingItem(
-            title = "Mountain Retreat",
-            description = "Escape to the mountains in this cozy retreat, surrounded by nature and hiking trails."
-        ),
-        ListingItem(
-            title = "Historic Townhouse",
-            description = "Step back in time in this charming historic townhouse, updated with modern comforts."
-        ),
-        ListingItem(
-            title = "Rustic Cabin",
-            description = "Unplug and unwind in this rustic cabin, nestled in the woods with a fireplace and hot tub."
-        ),
-        ListingItem(
-            title = "Urban Loft",
-            description = "Live like a local in this trendy urban loft, with high ceilings and industrial chic decor."
-        ),
-        ListingItem(
-            title = "Lakefront Cottage",
-            description = "Relax and recharge in this quaint lakefront cottage, with a private dock and stunning views."
-        )
-    )
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         val user = args.user
-        return ComposeView(requireContext()).apply {
-            setContent {
-                ProfileScreen(
-                    user = user,
-                    onBackPressed = {
-                        requireActivity().onBackPressedDispatcher.onBackPressed()
+        val composeView = ComposeView(requireContext())
+
+        firebaseAPI.getUserStatistics(user, object : UserStatisticsCallback {
+            override fun onUserStatisticsReceived(userStatistics: UserStatistics) {
+                firebaseAPI.getPostingDataList(user, object : PostingDataListCallBack {
+                    override fun onPostingDataListReceived(postingDataList: List<PostingData>) {
+                        listItems.clear()
+                        postingDataList.forEach { postingData ->
+                            val listingItem = ListingItem(
+                                dataId = postingData.postID,
+                                title = postingData.title,
+                                description = postingData.description,
+                                location = postingData.location
+                            )
+                            listItems.add(listingItem)
+                        }
+                        composeView.setContent {
+                            ProfileScreen(
+                                user = user,
+                                userStatistics = userStatistics,
+                                listItems = listItems,
+                                onDeleteClick = { dataId ->
+                                    firebaseAPI.deletePostingData(user, dataId)
+                                },
+                                onBackPressed = {
+                                    requireActivity().onBackPressedDispatcher.onBackPressed()
+                                }
+                            )
+                        }
                     }
-                )
+
+                    override fun onPostingDataListError(e: Exception) {
+                        Log.e("TAG", "Error retrieving posting data list", e)
+                    }
+                })
             }
+
+            override fun onUserStatisticsError(e: Exception) {
+                Log.e("TAG", "Error retrieving user statistics", e)
+                composeView.setContent {
+                    // Show an error message or handle the error scenario
+                    Text("Error retrieving user statistics")
+                }
+            }
+        })
+        composeView.setContent {
+            // Show a loading indicator or placeholder UI
+            Text("Loading user statistics...")
         }
+
+        return composeView
     }
     @Composable
     fun ProfileScreen(
         user: UserData,
+        userStatistics: UserStatistics?,
+        listItems: List<ListingItem>,
+        onDeleteClick: (String) -> Unit,
+
         onBackPressed: () -> Unit
     ) {
         Box(
@@ -153,7 +164,7 @@ class ProfileFragment : Fragment() {
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "4.5",
+                            text = userStatistics?.averageRating?.toString() ?: "0.0",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.Black
                         )
@@ -169,7 +180,7 @@ class ProfileFragment : Fragment() {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "10",
+                            text = userStatistics?.numItemsPosted?.toString() ?: "0",
                             style = MaterialTheme.typography.headlineLarge,
                             color = Color.Black
                         )
@@ -183,7 +194,7 @@ class ProfileFragment : Fragment() {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "5",
+                            text = userStatistics?.numItemsClaimed?.toString() ?: "0",
                             style = MaterialTheme.typography.headlineLarge,
                             color = Color.Black
                         )
@@ -204,7 +215,10 @@ class ProfileFragment : Fragment() {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(listItems) { item ->
-                        ListingCard(item = item)
+                        ListingCard(
+                            item = item,
+                            onDeleteClick = onDeleteClick
+                        )
                     }
                 }
             }
@@ -224,18 +238,39 @@ class ProfileFragment : Fragment() {
     }
 
     @Composable
-    fun ListingCard(item: ListingItem) {
+    fun ListingCard(item: ListingItem, onDeleteClick: (String) -> Unit) {
         Card(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
                 modifier = Modifier.padding(16.dp)
             ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                    IconButton(
+                        onClick = {
+                            Log.d("TAG", item.dataId)
+                            onDeleteClick(item.dataId)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete"
+                        )
+                    }
+                }
                 Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.bodyLarge
+                    text = item.location,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
                 )
-                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = item.description,
                     style = MaterialTheme.typography.bodyMedium
@@ -245,7 +280,9 @@ class ProfileFragment : Fragment() {
     }
 
     data class ListingItem(
+        val dataId: String,
         val title: String,
+        val location: String,
         val description: String
     )
 }

@@ -18,7 +18,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 
@@ -52,46 +55,52 @@ class PostingFragment : Fragment() {
         val descriptionState = remember { mutableStateOf(TextFieldValue()) }
         val navController = findNavController()
 
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            OutlinedTextField(
-                value = titleState.value,
-                onValueChange = { titleState.value = it },
-                label = { Text("Title") }
-            )
-            OutlinedTextField(
-                value = locationState.value,
-                onValueChange = { locationState.value = it },
-                label = { Text("Location") }
-            )
-            OutlinedTextField(
-                value = descriptionState.value,
-                onValueChange = { descriptionState.value = it },
-                label = { Text("Description") }
-            )
-            Button(
-                onClick = {
-                    val userID = user.userId
-                    val title = titleState.value.text
-                    val location = locationState.value.text
-                    val description = descriptionState.value.text
-                    val data =
-                        PostingData(userID = userID, title = title, location = location,
-                            description = description, claimed = false)
-
-                    if (hasRequiredInputs(data)) {
-                        val firebaseAPI = FirebaseAPI()
-                        firebaseAPI.uploadPostingData(data)
-                        navController.popBackStack()
-                    } else {
-                        Toast.makeText(context, "Please fill in title and location", Toast.LENGTH_SHORT).show()
-                    }
-
-                }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(color = Color(0xFFF5F5F5))
+        ){
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Post")
+                OutlinedTextField(
+                    value = titleState.value,
+                    onValueChange = { titleState.value = it },
+                    label = { Text("Title") }
+                )
+                OutlinedTextField(
+                    value = locationState.value,
+                    onValueChange = { locationState.value = it },
+                    label = { Text("Location") }
+                )
+                OutlinedTextField(
+                    value = descriptionState.value,
+                    onValueChange = { descriptionState.value = it },
+                    label = { Text("Description") }
+                )
+                Button(
+                    onClick = {
+                        val userID = user.userId
+                        val title = titleState.value.text
+                        val location = locationState.value.text
+                        val description = descriptionState.value.text
+                        val data =
+                            PostingData(userID = userID, title = title, location = location,
+                                description = description, claimed = false)
+
+                        if (hasRequiredInputs(data)) {
+                            val firebaseAPI = FirebaseAPI()
+                            firebaseAPI.uploadPostingData(data, user)
+                            navController.popBackStack()
+                        } else {
+                            Toast.makeText(context, "Please fill in title and location", Toast.LENGTH_SHORT).show()
+                        }
+
+                    }
+                ) {
+                    Text("Post")
+                }
             }
         }
     }

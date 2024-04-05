@@ -3,32 +3,35 @@ package com.example.pickuppal
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
-import android.view.View.INVISIBLE
-import android.view.View.VISIBLE
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.ProgressBar
-import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.compose.setContent
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.fragment.findNavController
-import com.bumptech.glide.Glide
 import com.google.android.gms.auth.api.identity.Identity
 import kotlinx.coroutines.launch
 
@@ -55,53 +58,84 @@ class SignInFragment : Fragment() {
         }
     }
 
-    private lateinit var signInButton: Button
-    private lateinit var logoutButton: Button
-    private lateinit var userNameTextView: TextView
-    private lateinit var profilePictureImageView: ImageView
-
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        val view = inflater.inflate(R.layout.fragment_sign_in, container, false)
-
-        signInButton = view.findViewById(R.id.signInButton)
-        userNameTextView = view.findViewById(R.id.usernameTextView)
-        logoutButton = view.findViewById(R.id.logoutButton)
-        profilePictureImageView = view.findViewById(R.id.profilePictureImageView)
-
-        signInButton.setOnClickListener {
-            lifecycleScope.launch {
-                val signInIntent = googleOAuthClient.signIn()
-                launcher.launch(
-                    IntentSenderRequest.Builder(signInIntent ?: return@launch).build()
-                )
-            }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.state.collect { state ->
-                    if (state.isSignInSuccessful) {
-                        val userData : UserData? = googleOAuthClient.getSignedInUser()
-                        val user: UserData = userData!!
-                        val action = SignInFragmentDirections.signInToMap(user)
+    ): View {
+        return ComposeView(requireContext()).apply {
+            setContent {
+                SignInScreen(
+                    onSignInClick = {
+                        lifecycleScope.launch {
+                            val signInIntent = googleOAuthClient.signIn()
+                            launcher.launch(
+                                IntentSenderRequest.Builder(signInIntent ?: return@launch).build()
+                            )
+                        }
+                    },
+                    onSignInSuccess = { userData ->
+                        val action = SignInFragmentDirections.signInToMap(userData)
                         findNavController().navigate(action)
-                    } else if (state.isSignInAttempted) {
-                        viewModel.resetState()
+                    },
+                    onSignInFailure = {
                         Toast.makeText(
                             requireContext(),
                             "Sign in unsuccessful",
                             Toast.LENGTH_SHORT
                         ).show()
                     }
+                )
+
+            }
+        }
+    }
+
+    @Composable
+    fun SignInScreen(
+        onSignInClick: () -> Unit,
+        onSignInSuccess: (UserData) -> Unit,
+        onSignInFailure: () -> Unit
+    ) {
+        val context = LocalContext.current
+        val state by viewModel.state.collectAsStateWithLifecycle()
+
+        LaunchedEffect(state.isSignInSuccessful) {
+            if (state.isSignInSuccessful) {
+                val userData: UserData? = googleOAuthClient.getSignedInUser()
+                if (userData != null) {
+                    onSignInSuccess(userData)
+                } else {
+                    onSignInFailure()
                 }
+            } else if (state.isSignInAttempted) {
+                viewModel.resetState()
+                onSignInFailure()
             }
         }
 
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFF5F5F5))
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "PickUp Pal",
+                fontSize = 50.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 32.dp, bottom = 16.dp)
+            )
+            ExtendedFloatingActionButton(
+                onClick = onSignInClick,
+                modifier = Modifier.padding(top = 16.dp)
+            ) {
+                Text("Sign In")
+            }
 
-        return view
+        }
     }
 }
