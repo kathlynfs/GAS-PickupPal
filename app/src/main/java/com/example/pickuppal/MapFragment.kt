@@ -112,7 +112,9 @@ class MapFragment : Fragment() {
 
             setContent {
                 MapScreen(
-                    onAddItemClick = { sharedViewModel.setCurrentFragment("posting") },
+                    onAddItemClick = {
+                        sharedViewModel.setCurrentFragment(requireActivity(), PostingFragment())
+                    },
                     onMapReady = { googleMap ->
                         currentLocation?.let{ location ->
                             val startingLocation = LatLng(location.latitude, location.longitude)
@@ -189,6 +191,7 @@ class MapFragment : Fragment() {
                 }
             }
 
+            // add item
             ExtendedFloatingActionButton(
                 onClick = onAddItemClick,
                 modifier = Modifier
@@ -198,6 +201,7 @@ class MapFragment : Fragment() {
                 Icon(Icons.Default.Add, contentDescription = "Add Item", tint = Color.Black)
             }
 
+            // setting menu
             ExtendedFloatingActionButton(
                 onClick = { isSettingsMenuOpen.value = true },
                 modifier = Modifier
