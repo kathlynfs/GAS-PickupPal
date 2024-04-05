@@ -145,11 +145,19 @@ class ProfileFragment : Fragment() {
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
-                    Text(
-                        text = "4.5",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Black
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "Rating",
+                            tint = Color.Black
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "4.5",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Black
+                        )
+                    }
                 }
                 Row(
                     modifier = Modifier
