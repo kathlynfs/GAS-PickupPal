@@ -29,9 +29,20 @@
             app:destination="@id/exitFragment"
             app:popUpTo="@id/nav_graph"
             app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_mapFragment_to_profileFragment"
+            app:destination="@id/profileFragment" />
     </fragment>
     <fragment
         android:id="@+id/exitFragment"
         android:name="com.example.pickuppal.ExitFragment"
         android:label="ExitFragment" />
+    <fragment
+        android:id="@+id/profileFragment"
+        android:name="com.example.pickuppal.ProfileFragment"
+        android:label="ProfileFragment">
+        <argument
+            android:name="user"
+            app:argType="com.example.pickuppal.UserData" />
+    </fragment>
 </navigation>
