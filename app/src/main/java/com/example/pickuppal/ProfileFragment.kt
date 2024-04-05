@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -68,8 +69,10 @@ class ProfileFragment : Fragment() {
                         listItems.clear()
                         postingDataList.forEach { postingData ->
                             val listingItem = ListingItem(
+                                dataId = postingData.postID,
                                 title = postingData.title,
-                                description = postingData.description
+                                description = postingData.description,
+                                location = postingData.location
                             )
                             listItems.add(listingItem)
                         }
@@ -78,6 +81,9 @@ class ProfileFragment : Fragment() {
                                 user = user,
                                 userStatistics = userStatistics,
                                 listItems = listItems,
+                                onDeleteClick = { dataId ->
+                                    firebaseAPI.deletePostingData(user, dataId)
+                                },
                                 onBackPressed = {
                                     requireActivity().onBackPressedDispatcher.onBackPressed()
                                 }
@@ -111,6 +117,8 @@ class ProfileFragment : Fragment() {
         user: UserData,
         userStatistics: UserStatistics?,
         listItems: List<ListingItem>,
+        onDeleteClick: (String) -> Unit,
+
         onBackPressed: () -> Unit
     ) {
         Box(
@@ -207,7 +215,10 @@ class ProfileFragment : Fragment() {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(listItems) { item ->
-                        ListingCard(item = item)
+                        ListingCard(
+                            item = item,
+                            onDeleteClick = onDeleteClick
+                        )
                     }
                 }
             }
@@ -227,18 +238,39 @@ class ProfileFragment : Fragment() {
     }
 
     @Composable
-    fun ListingCard(item: ListingItem) {
+    fun ListingCard(item: ListingItem, onDeleteClick: (String) -> Unit) {
         Card(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
                 modifier = Modifier.padding(16.dp)
             ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                    IconButton(
+                        onClick = {
+                            Log.d("TAG", item.dataId)
+                            onDeleteClick(item.dataId)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete"
+                        )
+                    }
+                }
                 Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.bodyLarge
+                    text = item.location,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
                 )
-                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = item.description,
                     style = MaterialTheme.typography.bodyMedium
@@ -248,7 +280,9 @@ class ProfileFragment : Fragment() {
     }
 
     data class ListingItem(
+        val dataId: String,
         val title: String,
+        val location: String,
         val description: String
     )
 }

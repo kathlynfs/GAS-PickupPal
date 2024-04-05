@@ -13,6 +13,29 @@ class FirebaseAPI {
     val TAG = "FirebaseAPI"
     private val db = Firebase.database.reference
 
+    fun deletePostingData(userData: UserData, dataId: String) {
+        val postingDataRef = db.child("posting_data").child(dataId)
+
+        postingDataRef.removeValue()
+            .addOnSuccessListener {
+                Log.d(TAG, "Posting data deleted successfully")
+                getUserStatistics(userData, object : UserStatisticsCallback {
+                    override fun onUserStatisticsReceived(userStatistics: UserStatistics) {
+                        val updatedStatistics = userStatistics.copy(
+                            numItemsPosted = userStatistics.numItemsPosted - 1
+                        )
+                        updateUserStatistics(updatedStatistics)
+                    }
+
+                    override fun onUserStatisticsError(e: Exception) {
+                        Log.e(TAG, "Error retrieving user statistics", e)
+                    }
+                })
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Error deleting posting data", e)
+            }
+    }
     fun uploadPostingData(data: PostingData, userData: UserData) {
         db.child("posting_data").child(data.postID).updateChildren(data.toMap())
             .addOnSuccessListener {
@@ -94,8 +117,18 @@ class FirebaseAPI {
                     val postingDataList = mutableListOf<PostingData>()
 
                     for (postSnapshot in dataSnapshot.children) {
-                        val postingData = postSnapshot.getValue(PostingData::class.java)
-                        if (postingData != null) {
+                        val postId = postSnapshot.key
+                        val postData = postSnapshot.getValue(PostingData::class.java)
+
+                        if (postId != null && postData != null) {
+                            val postingData = PostingData(
+                                postID = postId,
+                                userID = postData.userID,
+                                title = postData.title,
+                                location = postData.location,
+                                description = postData.description,
+                                claimed = postData.claimed
+                            )
                             postingDataList.add(postingData)
                         }
                     }
