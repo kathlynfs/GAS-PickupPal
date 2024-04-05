@@ -27,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
 import com.google.android.gms.auth.api.identity.Identity
 import kotlinx.coroutines.launch
@@ -83,44 +84,18 @@ class SignInFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.state.collect { state ->
-
                     if (state.isSignInSuccessful) {
+                        val userData : UserData? = googleOAuthClient.getSignedInUser()
+                        val user: UserData = userData!!
+                        val action = SignInFragmentDirections.signInToMap(user)
+                        findNavController().navigate(action)
+                    } else if (state.isSignInAttempted) {
+                        viewModel.resetState()
                         Toast.makeText(
                             requireContext(),
-                            "Sign in successful",
-                            Toast.LENGTH_LONG
+                            "Sign in unsuccessful",
+                            Toast.LENGTH_SHORT
                         ).show()
-                        val userData : UserData? = googleOAuthClient.getSignedInUser()
-                        if (userData?.username != null) {
-                            userNameTextView.text = userData.username
-                            Glide.with(requireContext())
-                                .load(userData.profilePictureUrl)
-                                .circleCrop()
-                                .into(profilePictureImageView)
-                        }
-                        signInButton.visibility = INVISIBLE
-                        logoutButton.visibility = VISIBLE
-                        logoutButton.setOnClickListener {
-                            logoutButton.visibility = INVISIBLE
-                            lifecycleScope.launch {
-                                googleOAuthClient.signOut()
-                                viewModel.resetState()
-                                Toast.makeText(
-                                    requireContext(),
-                                    "Signed out",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                                userNameTextView.text = ""
-                                profilePictureImageView.setImageDrawable(null)
-                                signInButton.visibility = VISIBLE
-
-                            }
-                        }
-                    } else {
-                        viewModel.resetState()
-                        userNameTextView.text = ""
-                        profilePictureImageView.setImageDrawable(null)
-                        logoutButton.setOnClickListener(null)
                     }
                 }
             }

@@ -6,6 +6,7 @@ import android.content.IntentSender
 import com.google.android.gms.auth.api.identity.BeginSignInRequest
 import com.google.android.gms.auth.api.identity.BeginSignInRequest.GoogleIdTokenRequestOptions
 import com.google.android.gms.auth.api.identity.SignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -17,6 +18,7 @@ class GoogleOAuthClient(
     private val oneTapClient: SignInClient
 ) {
     private val auth = Firebase.auth
+    private lateinit var googleSignInClient: GoogleSignInClient
 
     suspend fun signIn(): IntentSender? {
         val result = try {
@@ -67,7 +69,8 @@ class GoogleOAuthClient(
         }
     }
 
-    fun getSignedInUser() : UserData? = auth.currentUser?.run {
+    fun getSignedInUser() : UserData? =
+        auth.currentUser?.run {
         UserData(
             userId = uid,
             username = displayName,
