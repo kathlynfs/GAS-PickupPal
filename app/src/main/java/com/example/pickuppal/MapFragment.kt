@@ -78,6 +78,10 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.findNavController
+import androidx.navigation.fragment.NavHostFragment
 import coil.compose.AsyncImage
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -104,6 +108,8 @@ class MapFragment : Fragment() {
         val profilePicture = args.user.profilePictureUrl
 
         return ComposeView(requireContext()).apply {
+            val navController = NavHostFragment.findNavController(this@MapFragment)
+
             setContent {
                 MapScreen(
                     onAddItemClick = { sharedViewModel.setCurrentFragment("posting") },
@@ -120,7 +126,8 @@ class MapFragment : Fragment() {
                             googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(startingLocation, 15f))
                         }
                     },
-                    profilePictureUrl = profilePicture!!
+                    profilePictureUrl = profilePicture!!,
+                    navController = navController
                 )
             }
         }
@@ -152,8 +159,11 @@ class MapFragment : Fragment() {
     fun MapScreen(
         onAddItemClick: () -> Unit,
         onMapReady: (GoogleMap) -> Unit,
-        profilePictureUrl: String
+        profilePictureUrl: String,
+        navController: NavController
     ) {
+        val args = MapFragmentArgs.fromBundle(requireArguments())
+        val user = args.user
         val mapView = rememberMapViewWithLifecycle()
         val currentLocation = remember { mutableStateOf<Location?>(null) }
         val coroutineScope = rememberCoroutineScope()
@@ -229,8 +239,11 @@ class MapFragment : Fragment() {
                 },
                 trailingIcon = {
                     IconButton(
-                        onClick = { /* Handle profile picture click */ }
-                    ) {
+                        onClick = {
+                            val action = MapFragmentDirections.actionMapFragmentToProfileFragment(user)
+
+                            navController.navigate(action) // Navigate to ProfileFragment
+                        }) {
                         AsyncImage(
                             model = profilePictureUrl,
                             contentDescription = "Profile Picture",
