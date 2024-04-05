@@ -1,6 +1,7 @@
 package com.example.pickuppal
 
 import FirebaseAPI
+import PostingDataListCallBack
 import UserStatisticsCallback
 import android.os.Bundle
 import android.provider.ContactsContract.Profile
@@ -49,51 +50,9 @@ import kotlin.math.floor
 class ProfileFragment : Fragment() {
     private val args: ProfileFragmentArgs by navArgs()
     private val firebaseAPI = FirebaseAPI()
-    private lateinit var userStatistics: UserStatistics
+    private val listItems = mutableListOf<ListingItem>()
 
 
-    val listItems = listOf(
-        ListingItem(
-            title = "Cozy Apartment",
-            description = "A cozy apartment with modern amenities, perfect for a couple or solo traveler."
-        ),
-        ListingItem(
-            title = "Spacious House",
-            description = "A spacious house with a beautiful backyard, ideal for families or groups."
-        ),
-        ListingItem(
-            title = "Luxury Villa",
-            description = "Experience luxury living in this stunning villa with a private pool and breathtaking views."
-        ),
-        ListingItem(
-            title = "Downtown Studio",
-            description = "A stylish studio apartment in the heart of the city, close to restaurants and attractions."
-        ),
-        ListingItem(
-            title = "Beachfront Condo",
-            description = "Enjoy a relaxing getaway in this beachfront condo with direct access to the sand and sea."
-        ),
-        ListingItem(
-            title = "Mountain Retreat",
-            description = "Escape to the mountains in this cozy retreat, surrounded by nature and hiking trails."
-        ),
-        ListingItem(
-            title = "Historic Townhouse",
-            description = "Step back in time in this charming historic townhouse, updated with modern comforts."
-        ),
-        ListingItem(
-            title = "Rustic Cabin",
-            description = "Unplug and unwind in this rustic cabin, nestled in the woods with a fireplace and hot tub."
-        ),
-        ListingItem(
-            title = "Urban Loft",
-            description = "Live like a local in this trendy urban loft, with high ceilings and industrial chic decor."
-        ),
-        ListingItem(
-            title = "Lakefront Cottage",
-            description = "Relax and recharge in this quaint lakefront cottage, with a private dock and stunning views."
-        )
-    )
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -104,15 +63,32 @@ class ProfileFragment : Fragment() {
 
         firebaseAPI.getUserStatistics(user, object : UserStatisticsCallback {
             override fun onUserStatisticsReceived(userStatistics: UserStatistics) {
-                composeView.setContent {
-                    ProfileScreen(
-                        user = user,
-                        userStatistics = userStatistics,
-                        onBackPressed = {
-                            requireActivity().onBackPressedDispatcher.onBackPressed()
+                firebaseAPI.getPostingDataList(user, object : PostingDataListCallBack {
+                    override fun onPostingDataListReceived(postingDataList: List<PostingData>) {
+                        listItems.clear()
+                        postingDataList.forEach { postingData ->
+                            val listingItem = ListingItem(
+                                title = postingData.title,
+                                description = postingData.description
+                            )
+                            listItems.add(listingItem)
                         }
-                    )
-                }
+                        composeView.setContent {
+                            ProfileScreen(
+                                user = user,
+                                userStatistics = userStatistics,
+                                listItems = listItems,
+                                onBackPressed = {
+                                    requireActivity().onBackPressedDispatcher.onBackPressed()
+                                }
+                            )
+                        }
+                    }
+
+                    override fun onPostingDataListError(e: Exception) {
+                        Log.e("TAG", "Error retrieving posting data list", e)
+                    }
+                })
             }
 
             override fun onUserStatisticsError(e: Exception) {
@@ -134,6 +110,7 @@ class ProfileFragment : Fragment() {
     fun ProfileScreen(
         user: UserData,
         userStatistics: UserStatistics?,
+        listItems: List<ListingItem>,
         onBackPressed: () -> Unit
     ) {
         Box(

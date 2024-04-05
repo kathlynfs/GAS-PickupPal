@@ -91,7 +91,7 @@ class PostingFragment : Fragment() {
 
                         if (hasRequiredInputs(data)) {
                             val firebaseAPI = FirebaseAPI()
-                            firebaseAPI.uploadPostingData(data)
+                            firebaseAPI.uploadPostingData(data, user)
                             navController.popBackStack()
                         } else {
                             Toast.makeText(context, "Please fill in title and location", Toast.LENGTH_SHORT).show()

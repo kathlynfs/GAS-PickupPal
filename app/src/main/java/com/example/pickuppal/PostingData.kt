@@ -4,11 +4,11 @@ import java.util.UUID
 
 data class PostingData(
     val postID: String = UUID.randomUUID().toString(),
-    val userID: String,
-    val title: String,
-    val location: String,
-    val description: String,
-    val claimed: Boolean
+    val userID: String = "",
+    val title: String = "",
+    val location: String = "",
+    val description: String = "",
+    val claimed: Boolean = false
 ) {
     fun toMap(): Map<String, Any> {
         return mapOf(

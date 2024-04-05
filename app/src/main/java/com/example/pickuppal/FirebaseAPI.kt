@@ -3,6 +3,9 @@ import com.example.pickuppal.PostingData
 import com.example.pickuppal.UserData
 import com.example.pickuppal.UserStatistics
 import com.google.firebase.Firebase
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.database
 
 class FirebaseAPI {
@@ -10,15 +13,37 @@ class FirebaseAPI {
     val TAG = "FirebaseAPI"
     private val db = Firebase.database.reference
 
-    fun uploadPostingData(data : PostingData) {
+    fun uploadPostingData(data: PostingData, userData: UserData) {
         db.child("posting_data").child(data.postID).updateChildren(data.toMap())
             .addOnSuccessListener {
                 Log.d(TAG, "Added posting data")
+                getUserStatistics(userData, object : UserStatisticsCallback {
+                    override fun onUserStatisticsReceived(userStatistics: UserStatistics) {
+                        val updatedStatistics = userStatistics.copy(
+                            numItemsPosted = userStatistics.numItemsPosted + 1
+                        )
+                        updateUserStatistics(updatedStatistics)
+                    }
+
+                    override fun onUserStatisticsError(e: Exception) {
+                        Log.e(TAG, "Error retrieving user statistics", e)
+                    }
+                })
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "Error adding posting data", e)
             }
     }
+    fun updateUserStatistics(data : UserStatistics) {
+        db.child("user_statistics").child(data.userID).updateChildren(data.toMap())
+            .addOnSuccessListener {
+                Log.d(TAG, "Update user statistics")
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Error updating user statistics", e)
+            }
+    }
+
 
     fun getUserStatistics(data: UserData, callback: UserStatisticsCallback) {
         Log.d(TAG, "get user statistics called")
@@ -59,17 +84,36 @@ class FirebaseAPI {
             }
     }
 
-    fun updateUserStatistics(data : UserStatistics) {
-        db.child("user_statistics").child(data.userID).updateChildren(data.toMap())
-            .addOnSuccessListener {
-                Log.d(TAG, "Update user statistics")
-            }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "Error updating user statistics", e)
-            }
+    fun getPostingDataList(data: UserData, callback: PostingDataListCallBack) {
+        val userId = data.userId
+        val postingDataRef = db.child("posting_data")
+
+        postingDataRef.orderByChild("userID").equalTo(userId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(dataSnapshot: DataSnapshot) {
+                    val postingDataList = mutableListOf<PostingData>()
+
+                    for (postSnapshot in dataSnapshot.children) {
+                        val postingData = postSnapshot.getValue(PostingData::class.java)
+                        if (postingData != null) {
+                            postingDataList.add(postingData)
+                        }
+                    }
+
+                    callback.onPostingDataListReceived(postingDataList)
+                }
+
+                override fun onCancelled(databaseError: DatabaseError) {
+                    Log.e(TAG, "Error retrieving posting data list", databaseError.toException())
+                    callback.onPostingDataListError(databaseError.toException())
+                }
+            })
     }
+}
 
-
+interface PostingDataListCallBack {
+    fun onPostingDataListReceived(postingDataList: List<PostingData>)
+    fun onPostingDataListError(e: Exception)
 }
 
 interface UserStatisticsCallback {
