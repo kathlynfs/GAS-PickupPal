@@ -83,7 +83,6 @@ class MapFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val sharedViewModel: SharedViewModel by activityViewModels()
         val args = MapFragmentArgs.fromBundle(requireArguments())
 
         val profilePicture = args.user.profilePictureUrl
