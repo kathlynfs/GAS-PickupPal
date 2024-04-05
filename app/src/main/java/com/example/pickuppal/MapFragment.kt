@@ -21,8 +21,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.AlertDialog
 import androidx.compose.material.Divider
 import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -149,6 +151,7 @@ class MapFragment : Fragment() {
         val searchQuery = remember { mutableStateOf("") }
         val isSearchActive = remember { mutableStateOf(false) }
         val isSettingsMenuOpen = remember { mutableStateOf(false) }
+        val openAlertDialog = remember { mutableStateOf(false)}
 
         Box(modifier = Modifier.fillMaxSize()) {
             AndroidView(
@@ -192,6 +195,30 @@ class MapFragment : Fragment() {
                     imageVector = Icons.Filled.Settings,
                     contentDescription = "Settings",
                     tint = Color.Black
+                )
+            }
+
+            // placeholder rating
+            ExtendedFloatingActionButton(
+                onClick = { openAlertDialog.value = true },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(end = 72.dp, bottom = 96.dp, start = 16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = "Rate",
+                    tint = Color.Black
+                )
+            }
+            if (openAlertDialog.value) {
+                RatingDialog(
+                    onDismissRequest = { openAlertDialog.value = false },
+                    onConfirmation = {
+                        openAlertDialog.value = false
+                    },
+                    dialogTitle = "Item Picked Up!",
+                    dialogText = "You've picked up an [item] from [user]! Remember to leave a review! If you're enjoying your new pick up item, consider leaving a tip for [user]!"
                 )
             }
 
@@ -432,4 +459,43 @@ class MapFragment : Fragment() {
                 }
             }
         }
+
+    @Composable
+    fun RatingDialog(
+        onDismissRequest: () -> Unit,
+        onConfirmation: () -> Unit,
+        dialogTitle: String,
+        dialogText: String
+    ) {
+        AlertDialog(
+            title = {
+                Text(text = dialogTitle)
+            },
+            text = {
+                Text(text = dialogText)
+            },
+            onDismissRequest = {
+                onDismissRequest()
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        onDismissRequest()
+                    }
+                ) {
+                    Text("No Thanks")
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onConfirmation()
+                    }
+                ) {
+                    Text("Tip")
+                }
+            }
+        )
+    }
+
 }
