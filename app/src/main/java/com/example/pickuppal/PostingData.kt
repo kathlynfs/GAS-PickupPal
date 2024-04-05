@@ -3,17 +3,20 @@ package com.example.pickuppal
 import java.util.UUID
 
 data class PostingData(
-    val id: String = UUID.randomUUID().toString(),
+    val postID: String = UUID.randomUUID().toString(),
+    val userID: String,
     val title: String,
     val location: String,
-    val description: String
+    val description: String,
+    val claimed: Boolean
 ) {
     fun toMap(): Map<String, Any> {
         return mapOf(
-            "id" to id,
+            "userID" to userID,
             "title" to title,
             "location" to location,
-            "description" to description
+            "description" to description,
+            "claimed" to claimed
         )
     }
 }

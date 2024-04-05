@@ -32,6 +32,9 @@
         <action
             android:id="@+id/action_mapFragment_to_profileFragment"
             app:destination="@id/profileFragment" />
+        <action
+            android:id="@+id/action_mapFragment_to_postingFragment"
+            app:destination="@id/postingFragment"/>
     </fragment>
     <fragment
         android:id="@+id/exitFragment"
@@ -41,6 +44,15 @@
         android:id="@+id/profileFragment"
         android:name="com.example.pickuppal.ProfileFragment"
         android:label="ProfileFragment">
+        <argument
+            android:name="user"
+            app:argType="com.example.pickuppal.UserData" />
+    </fragment>
+    <fragment
+        android:id="@+id/postingFragment"
+        android:name="com.example.pickuppal.PostingFragment"
+        tools:layout="@layout/fragment_posting"
+        android:label="PostingFragment" >
         <argument
             android:name="user"
             app:argType="com.example.pickuppal.UserData" />
