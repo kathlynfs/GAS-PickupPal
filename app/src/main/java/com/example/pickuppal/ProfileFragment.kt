@@ -1,7 +1,10 @@
 package com.example.pickuppal
 
+import FirebaseAPI
+import UserStatisticsCallback
 import android.os.Bundle
 import android.provider.ContactsContract.Profile
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -45,6 +48,9 @@ import kotlin.math.floor
 
 class ProfileFragment : Fragment() {
     private val args: ProfileFragmentArgs by navArgs()
+    private val firebaseAPI = FirebaseAPI()
+    private lateinit var userStatistics: UserStatistics
+
 
     val listItems = listOf(
         ListingItem(
@@ -94,20 +100,40 @@ class ProfileFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         val user = args.user
-        return ComposeView(requireContext()).apply {
-            setContent {
-                ProfileScreen(
-                    user = user,
-                    onBackPressed = {
-                        requireActivity().onBackPressedDispatcher.onBackPressed()
-                    }
-                )
+        val composeView = ComposeView(requireContext())
+
+        firebaseAPI.getUserStatistics(user, object : UserStatisticsCallback {
+            override fun onUserStatisticsReceived(userStatistics: UserStatistics) {
+                composeView.setContent {
+                    ProfileScreen(
+                        user = user,
+                        userStatistics = userStatistics,
+                        onBackPressed = {
+                            requireActivity().onBackPressedDispatcher.onBackPressed()
+                        }
+                    )
+                }
             }
+
+            override fun onUserStatisticsError(e: Exception) {
+                Log.e("TAG", "Error retrieving user statistics", e)
+                composeView.setContent {
+                    // Show an error message or handle the error scenario
+                    Text("Error retrieving user statistics")
+                }
+            }
+        })
+        composeView.setContent {
+            // Show a loading indicator or placeholder UI
+            Text("Loading user statistics...")
         }
+
+        return composeView
     }
     @Composable
     fun ProfileScreen(
         user: UserData,
+        userStatistics: UserStatistics?,
         onBackPressed: () -> Unit
     ) {
         Box(
@@ -153,7 +179,7 @@ class ProfileFragment : Fragment() {
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "4.5",
+                            text = userStatistics?.averageRating?.toString() ?: "0.0",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.Black
                         )
@@ -169,7 +195,7 @@ class ProfileFragment : Fragment() {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "10",
+                            text = userStatistics?.numItemsPosted?.toString() ?: "0",
                             style = MaterialTheme.typography.headlineLarge,
                             color = Color.Black
                         )
@@ -183,7 +209,7 @@ class ProfileFragment : Fragment() {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "5",
+                            text = userStatistics?.numItemsClaimed?.toString() ?: "0",
                             style = MaterialTheme.typography.headlineLarge,
                             color = Color.Black
                         )
