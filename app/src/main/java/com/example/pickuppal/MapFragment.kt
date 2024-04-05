@@ -93,9 +93,6 @@ class MapFragment : Fragment() {
 
             setContent {
                 MapScreen(
-                    onAddItemClick = {
-                        sharedViewModel.setCurrentFragment(requireActivity(), PostingFragment())
-                    },
                     onMapReady = { googleMap ->
                         currentLocation?.let{ location ->
                             val startingLocation = LatLng(location.latitude, location.longitude)
@@ -140,7 +137,6 @@ class MapFragment : Fragment() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun MapScreen(
-        onAddItemClick: () -> Unit,
         onMapReady: (GoogleMap) -> Unit,
         profilePictureUrl: String,
         navController: NavController
@@ -174,7 +170,10 @@ class MapFragment : Fragment() {
 
             // add item
             ExtendedFloatingActionButton(
-                onClick = onAddItemClick,
+                onClick = {
+                    val action = MapFragmentDirections.actionMapFragmentToPostingFragment(user)
+                    navController.navigate(action)
+                },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(16.dp)
