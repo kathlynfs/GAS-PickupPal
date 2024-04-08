@@ -11,6 +11,8 @@ data class PostingData(
     val claimed: Boolean,
     val photoUrl: String
 ) {
+    constructor() : this("", "", "", "", "", false, "")
+
     fun toMap(): Map<String, Any> {
         return mapOf(
             "userID" to userID,
