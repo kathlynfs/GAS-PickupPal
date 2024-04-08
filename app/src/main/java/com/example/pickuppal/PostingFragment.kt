@@ -1,6 +1,7 @@
 package com.example.pickuppal
 
 import FirebaseAPI
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -74,7 +75,7 @@ class PostingFragment : Fragment() {
 
     private fun dispatchTakePictureIntent() {
         val timestamp = System.currentTimeMillis()
-        val name = "IMG_${timestamp}.jpg"
+        val name = "IMG_${timestamp}.jpeg"
         photoName = name
         val photoFile = File(requireContext().filesDir, photoName)
         photoFile?.let { file ->
@@ -141,10 +142,10 @@ class PostingFragment : Fragment() {
                     if (hasRequiredInputs(data)) {
                         val firebaseAPI = FirebaseAPI()
                         firebaseAPI.uploadPostingData(data)
-                        photoUri?.let {
-                            uri -> firebaseAPI.uploadImage(uri)
-                        } ?: kotlin.run {
-                            Toast.makeText(context, "No photo", Toast.LENGTH_SHORT)
+                        photoUri?.let { uri ->
+                            val bitmap = BitmapFactory.decodeStream(context.contentResolver.openInputStream(uri))
+                            val name:String = photoName?: "defaultphotoname"
+                            firebaseAPI.uploadImage(bitmap, name)
                         }
                         navController.popBackStack()
                     } else {
@@ -157,11 +158,11 @@ class PostingFragment : Fragment() {
         }
     }
 
-
     private fun hasRequiredInputs(data: PostingData): Boolean {
         return data.title.isNotBlank()
                 && data.location.isNotBlank()
                 && data.userID.isNotBlank()
+                && photoName != null
     }
 }
 

@@ -1,3 +1,4 @@
+import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
 import com.example.pickuppal.PostingData
@@ -5,6 +6,7 @@ import com.example.pickuppal.UserStatistics
 import com.google.firebase.Firebase
 import com.google.firebase.database.database
 import com.google.firebase.storage.storage
+import java.io.ByteArrayOutputStream
 
 class FirebaseAPI {
 
@@ -21,24 +23,21 @@ class FirebaseAPI {
             }
     }
 
-    fun uploadImage(photoUri: Uri?) {
-        photoUri?.let { uri ->
-            val storage = Firebase.storage
-            val storageRef = storage.reference
-            val photoRef = storageRef.child("photos/${uri.lastPathSegment}")
+    fun uploadImage(bitmap: Bitmap, imageName: String) {
+        val storage = Firebase.storage
+        val storageRef = storage.reference
+        val imagesRef = storageRef.child("images")
+        val imageRef = imagesRef.child(imageName)
 
-            photoRef.putFile(uri)
-                .addOnSuccessListener { _ ->
-                    photoRef.downloadUrl.addOnSuccessListener { downloadUri ->
-                        val downloadUrl = downloadUri.toString()
-                        Log.d("FirebasePhotoUpload", "Download URL: $downloadUrl")
-                    }
-                }
-                .addOnFailureListener { exception ->
-                    Log.e("UploadPhotoToFirebase", "Upload failed: ${exception.message}")
-                }
-        } ?: run {
-            Log.e("UploadPhotoToFirebase", "Photo URI is null")
+        val baos = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos)
+        val data = baos.toByteArray()
+        val uploadTask = imageRef.putBytes(data)
+
+        uploadTask.addOnSuccessListener { taskSnapshot ->
+            Log.d("UploadBitmap", "Image uploaded successfully")
+        }.addOnFailureListener { exception ->
+            Log.e("UploadBitmap", "Error uploading image: ${exception.message}")
         }
     }
 
