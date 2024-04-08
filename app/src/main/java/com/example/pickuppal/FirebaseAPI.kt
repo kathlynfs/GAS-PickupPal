@@ -159,7 +159,8 @@ class FirebaseAPI {
                                 title = postData.title,
                                 location = postData.location,
                                 description = postData.description,
-                                claimed = postData.claimed
+                                claimed = postData.claimed,
+                                photoUrl = postData.photoUrl
                             )
                             postingDataList.add(postingData)
                         }

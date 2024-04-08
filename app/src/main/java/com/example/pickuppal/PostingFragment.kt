@@ -10,10 +10,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
-import androidx.compose.ui.geometry.Size
+import androidx.compose.foundation.background
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,18 +25,16 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.core.content.FileProvider
-import coil.compose.rememberImagePainter
 import java.io.File
 import kotlin.math.min
 
@@ -105,64 +101,71 @@ class PostingFragment : Fragment() {
         val imageBitmapState = remember { mutableStateOf<ImageBitmap?>(null)}
         val navController = findNavController()
         val context = LocalContext.current
-
-
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            OutlinedTextField(
-                value = titleState.value,
-                onValueChange = { titleState.value = it },
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(color = Color(0xFFF5F5F5))
+        ){
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Add a Title", color = Color.Gray) }
-            )
-            Button(
-                onClick = { launchTakePicture() }
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text("Take a Photo")
-            }
-            OutlinedTextField(
-                value = locationState.value,
-                onValueChange = { locationState.value = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Add a Location", color = Color.Gray) }
-            )
-            OutlinedTextField(
-                value = descriptionState.value,
-                onValueChange = { descriptionState.value = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Add a Description", color = Color.Gray) }
-            )
+                OutlinedTextField(
+                    value = titleState.value,
+                    onValueChange = { titleState.value = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Add a Title", color = Color.Gray) }
+                )
+                Button(
+                    onClick = { launchTakePicture() }
+                ) {
+                    Text("Take a Photo")
+                }
+                OutlinedTextField(
+                    value = locationState.value,
+                    onValueChange = { locationState.value = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Add a Location", color = Color.Gray) }
+                )
+                OutlinedTextField(
+                    value = descriptionState.value,
+                    onValueChange = { descriptionState.value = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Add a Description", color = Color.Gray) }
+                )
 
-            Button(
-                onClick = {
-                    val userID = user.userId
-                    val title = titleState.value.text
-                    val location = locationState.value.text
-                    val description = descriptionState.value.text
-                    val data =
-                        PostingData(
+                Button(
+                    onClick = {
+                        val userID = user.userId
+                        val title = titleState.value.text
+                        val location = locationState.value.text
+                        val description = descriptionState.value.text
+                        val data = PostingData(
                             userID = userID, title = title, location = location,
                             description = description, claimed = false, photoUrl = "no picture yet"
                         )
 
-                    if (hasRequiredInputs(data)) {
-                        val firebaseAPI = FirebaseAPI()
-                        firebaseAPI.uploadPostingData(data)
-                        photoUri?.let { uri ->
-                            val bitmap = BitmapFactory.decodeStream(context.contentResolver.openInputStream(uri))
-                            val name:String = photoName?: "defaultphotoname"
-                            firebaseAPI.uploadImage(bitmap, name, data)
+                        if (hasRequiredInputs(data)) {
+                            val firebaseAPI = FirebaseAPI()
+                            firebaseAPI.uploadPostingData(data, user)
+                            photoUri?.let { uri ->
+                                val bitmap = BitmapFactory.decodeStream(context.contentResolver.openInputStream(uri))
+                                val name:String = photoName?: "defaultphotoname"
+                                firebaseAPI.uploadImage(bitmap, name, data)
+                            }
+                            navController.popBackStack()
+                        } else {
+                            Toast.makeText(context, "Please fill in title and location", Toast.LENGTH_SHORT).show()
                         }
-                        navController.popBackStack()
-                    } else {
-                        Toast.makeText(context, "Please fill in title and location", Toast.LENGTH_SHORT).show()
                     }
+                ) {
+                    Text("Post")
                 }
             }
+
         }
+
     }
 
     private fun hasRequiredInputs(data: PostingData): Boolean {
