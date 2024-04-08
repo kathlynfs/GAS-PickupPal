@@ -8,7 +8,8 @@ data class PostingData(
     val title: String,
     val location: String,
     val description: String,
-    val claimed: Boolean
+    val claimed: Boolean,
+    val photoUrl: String? = null
 ) {
     fun toMap(): Map<String, Any> {
         return mapOf(
