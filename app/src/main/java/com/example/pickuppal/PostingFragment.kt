@@ -136,7 +136,7 @@ class PostingFragment : Fragment() {
                     val data =
                         PostingData(
                             userID = userID, title = title, location = location,
-                            description = description, claimed = false
+                            description = description, claimed = false, photoUrl = "no picture yet"
                         )
 
                     if (hasRequiredInputs(data)) {
@@ -145,7 +145,7 @@ class PostingFragment : Fragment() {
                         photoUri?.let { uri ->
                             val bitmap = BitmapFactory.decodeStream(context.contentResolver.openInputStream(uri))
                             val name:String = photoName?: "defaultphotoname"
-                            firebaseAPI.uploadImage(bitmap, name)
+                            firebaseAPI.uploadImage(bitmap, name, data)
                         }
                         navController.popBackStack()
                     } else {

@@ -23,7 +23,7 @@ class FirebaseAPI {
             }
     }
 
-    fun uploadImage(bitmap: Bitmap, imageName: String) {
+    fun uploadImage(bitmap: Bitmap, imageName: String, postingData: PostingData) {
         val storage = Firebase.storage
         val storageRef = storage.reference
         val imagesRef = storageRef.child("images")
@@ -35,11 +35,19 @@ class FirebaseAPI {
         val uploadTask = imageRef.putBytes(data)
 
         uploadTask.addOnSuccessListener { taskSnapshot ->
-            Log.d("UploadBitmap", "Image uploaded successfully")
+            imageRef.downloadUrl.addOnSuccessListener { uri ->
+                val imageUrl = uri.toString()
+                Log.d(TAG, "Image uploaded successfully. URL: $imageUrl")
+                db.child("posting_data").child(postingData.postID).child("photoUrl").setValue(imageUrl)
+            }.addOnFailureListener { exception ->
+                Log.e(TAG, "Error getting download URL: ${exception.message}")
+            }
         }.addOnFailureListener { exception ->
-            Log.e("UploadBitmap", "Error uploading image: ${exception.message}")
+            Log.e(TAG, "Error uploading image: ${exception.message}")
         }
     }
+
+
 
 
     fun updateUserStatistics(data : UserStatistics) {
