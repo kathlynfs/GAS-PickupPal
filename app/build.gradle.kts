@@ -72,7 +72,6 @@ dependencies {
     implementation("androidx.navigation:navigation-ui-ktx:2.7.7")
     implementation("androidx.compose.material3:material3:1.2.1")
     implementation("androidx.compose.material3:material3-android:1.2.1")
-
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
@@ -91,4 +90,8 @@ dependencies {
     implementation("androidx.compose.material3:material3:1.2.1")
     implementation("androidx.compose.material3:material3-window-size-class:1.2.1")
     implementation("androidx.compose.material3:material3-adaptive-navigation-suite:1.0.0-alpha05")
+    implementation(platform("com.google.firebase:firebase-bom:32.8.0"))
+    implementation("com.google.firebase:firebase-storage")
+    implementation("io.coil-kt:coil-compose:1.4.0")
+
 }
