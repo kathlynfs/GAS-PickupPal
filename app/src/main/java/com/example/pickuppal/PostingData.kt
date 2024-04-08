@@ -9,7 +9,7 @@ data class PostingData(
     val location: String,
     val description: String,
     val claimed: Boolean,
-    val photoUrl: String
+    var photoUrl: String
 ) {
     constructor() : this("", "", "", "", "", false, "")
 

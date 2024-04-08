@@ -137,26 +137,32 @@ class PostingFragment : Fragment() {
 
                 Button(
                     onClick = {
-                        val userID = user.userId
-                        val title = titleState.value.text
-                        val location = locationState.value.text
-                        val description = descriptionState.value.text
-                        val data = PostingData(
-                            userID = userID, title = title, location = location,
-                            description = description, claimed = false, photoUrl = "no picture yet"
-                        )
-
-                        if (hasRequiredInputs(data)) {
+                        if (hasRequiredInputs(titleState.value.text, locationState.value.text, photoUri)) {
                             val firebaseAPI = FirebaseAPI()
-                            firebaseAPI.uploadPostingData(data, user)
                             photoUri?.let { uri ->
                                 val bitmap = BitmapFactory.decodeStream(context.contentResolver.openInputStream(uri))
                                 val name:String = photoName?: "defaultphotoname"
-                                firebaseAPI.uploadImage(bitmap, name, data)
+                                firebaseAPI.uploadImage(bitmap, name) { imageUrl ->
+                                    if (imageUrl != null) {
+                                        val data = PostingData (
+                                            userID = user.userId,
+                                            title = titleState.value.text,
+                                            location = locationState.value.text,
+                                            description = descriptionState.value.text,
+                                            claimed = false,
+                                            photoUrl = imageUrl
+                                        )
+                                        firebaseAPI.uploadPostingData(data, user)
+                                        navController.popBackStack()
+                                    } else {
+                                        Toast.makeText(context, "Error. Please try again.", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             }
-                            navController.popBackStack()
+
+
                         } else {
-                            Toast.makeText(context, "Please fill in title and location", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Please fill in title, location, and image", Toast.LENGTH_SHORT).show()
                         }
                     }
                 ) {
@@ -168,11 +174,8 @@ class PostingFragment : Fragment() {
 
     }
 
-    private fun hasRequiredInputs(data: PostingData): Boolean {
-        return data.title.isNotBlank()
-                && data.location.isNotBlank()
-                && data.userID.isNotBlank()
-                && photoName != null
+    private fun hasRequiredInputs(title : String, location : String, uri : Uri?): Boolean {
+        return title.isNotBlank() && location.isNotBlank() && uri != null
     }
 
     fun getScaledBitmap(path: String, destWidth: Int, destHeight: Int): Bitmap? {
