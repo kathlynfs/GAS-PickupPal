@@ -83,7 +83,6 @@ class MapFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val sharedViewModel: SharedViewModel by activityViewModels()
         val args = MapFragmentArgs.fromBundle(requireArguments())
 
         val profilePicture = args.user.profilePictureUrl
@@ -168,7 +167,6 @@ class MapFragment : Fragment() {
                 }
             }
 
-            // add item
             ExtendedFloatingActionButton(
                 onClick = {
                     val action = MapFragmentDirections.actionMapFragmentToPostingFragment(user)
@@ -181,7 +179,6 @@ class MapFragment : Fragment() {
                 Icon(Icons.Default.Add, contentDescription = "Add Item", tint = Color.Black)
             }
 
-            // setting menu
             ExtendedFloatingActionButton(
                 onClick = { isSettingsMenuOpen.value = true },
                 modifier = Modifier

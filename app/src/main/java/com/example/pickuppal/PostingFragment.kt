@@ -161,8 +161,6 @@ class PostingFragment : Fragment() {
                         Toast.makeText(context, "Please fill in title and location", Toast.LENGTH_SHORT).show()
                     }
                 }
-            ) {
-                Text("Post")
             }
         }
     }
