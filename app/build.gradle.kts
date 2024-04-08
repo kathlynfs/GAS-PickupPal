@@ -92,4 +92,6 @@ dependencies {
     implementation("androidx.compose.material3:material3-adaptive-navigation-suite:1.0.0-alpha05")
     implementation(platform("com.google.firebase:firebase-bom:32.8.0"))
     implementation("com.google.firebase:firebase-storage")
+    implementation("io.coil-kt:coil-compose:1.4.0")
+
 }

@@ -1,6 +1,7 @@
 package com.example.pickuppal
 
 import FirebaseAPI
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
@@ -11,6 +12,8 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.ui.geometry.Size
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,18 +28,23 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.core.content.FileProvider
+import coil.compose.rememberImagePainter
 import java.io.File
+import kotlin.math.min
 
 
 class PostingFragment : Fragment() {
     private val args: PostingFragmentArgs by navArgs()
-    private lateinit var takePictureLauncher: ActivityResultLauncher<Uri>
     private var photoUri: Uri? = null
 
     override fun onCreateView(
@@ -45,7 +53,6 @@ class PostingFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         val user = args.user
-        takePictureLauncher = takePhoto
         return ComposeView(requireContext()).apply {
             setContent {
                 PostingContent(
@@ -59,12 +66,11 @@ class PostingFragment : Fragment() {
     }
 
     private var photoName: String? = null
+    private var photoFile: File? = null
 
     private val takePhoto = registerForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { didTakePhoto ->
-        Log.d("TakePhotoCallback", "didTakePhoto: $didTakePhoto")
-        Log.d("TakePhotoCallback", "photoName: $photoName")
         if (didTakePhoto && photoName != null) {
             photoUri = Uri.fromFile(File(requireContext().filesDir, photoName))
             Log.d("TakePhotoCallback", "photoUri: $photoUri")
@@ -73,15 +79,17 @@ class PostingFragment : Fragment() {
         }
     }
 
-    private fun dispatchTakePictureIntent() {
+    private fun launchTakePicture() {
         val timestamp = System.currentTimeMillis()
         val name = "IMG_${timestamp}.jpeg"
         photoName = name
-        val photoFile = File(requireContext().filesDir, photoName)
-        photoFile?.let { file ->
+        val pf = File(requireContext().filesDir, photoName)
+        photoFile = pf
+        pf.let { file ->
             val photoUri = FileProvider.getUriForFile(requireContext(),
                 "com.example.pickuppal.fileprovider", file)
-            takePictureLauncher.launch(photoUri)
+            takePhoto.launch(photoUri)
+
         }
     }
 
@@ -94,6 +102,7 @@ class PostingFragment : Fragment() {
         val titleState = remember { mutableStateOf(TextFieldValue()) }
         val locationState = remember { mutableStateOf(TextFieldValue()) }
         val descriptionState = remember { mutableStateOf(TextFieldValue()) }
+        val imageBitmapState = remember { mutableStateOf<ImageBitmap?>(null)}
         val navController = findNavController()
         val context = LocalContext.current
 
@@ -110,7 +119,7 @@ class PostingFragment : Fragment() {
                 placeholder = { Text("Add a Title", color = Color.Gray) }
             )
             Button(
-                onClick = { dispatchTakePictureIntent() }
+                onClick = { launchTakePicture() }
             ) {
                 Text("Take a Photo")
             }
@@ -163,6 +172,28 @@ class PostingFragment : Fragment() {
                 && data.location.isNotBlank()
                 && data.userID.isNotBlank()
                 && photoName != null
+    }
+
+    fun getScaledBitmap(path: String, destWidth: Int, destHeight: Int): Bitmap? {
+        val options = BitmapFactory.Options()
+        options.inJustDecodeBounds = true
+        BitmapFactory.decodeFile(path, options)
+
+        val srcWidth = options.outWidth.toFloat()
+        val srcHeight = options.outHeight.toFloat()
+
+        val sampleSize = if (srcHeight <= destHeight && srcWidth <= destWidth) {
+            1
+        } else {
+            val heightScale = srcHeight / destHeight
+            val widthScale = srcWidth / destWidth
+
+            min(heightScale, widthScale).toInt()
+        }
+
+        return BitmapFactory.decodeFile(path, BitmapFactory.Options().apply {
+            inSampleSize = sampleSize
+        })
     }
 }
 
