@@ -38,6 +38,7 @@ class FirebaseAPI {
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "Error deleting posting data", e)
+
             }
     }
     fun uploadPostingData(data: PostingData, userData: UserData) {
@@ -62,7 +63,7 @@ class FirebaseAPI {
             }
     }
 
-    fun uploadImage(bitmap: Bitmap, imageName: String, postingData: PostingData) {
+    fun uploadImage(bitmap: Bitmap, imageName: String, callback: (String?) -> Unit)  {
         val storage = Firebase.storage
         val storageRef = storage.reference
         val imagesRef = storageRef.child("images")
@@ -77,12 +78,14 @@ class FirebaseAPI {
             imageRef.downloadUrl.addOnSuccessListener { uri ->
                 val imageUrl = uri.toString()
                 Log.d(TAG, "Image uploaded successfully. URL: $imageUrl")
-                db.child("posting_data").child(postingData.postID).child("photoUrl").setValue(imageUrl)
+                callback(imageUrl)
             }.addOnFailureListener { exception ->
                 Log.e(TAG, "Error getting download URL: ${exception.message}")
+                callback(null)
             }
         }.addOnFailureListener { exception ->
             Log.e(TAG, "Error uploading image: ${exception.message}")
+            callback(null)
         }
     }
 
