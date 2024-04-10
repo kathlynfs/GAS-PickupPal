@@ -1,4 +1,6 @@
 import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
+import java.io.FileInputStream
+import java.util.Properties
 
 plugins {
     id("com.android.application")
@@ -9,6 +11,9 @@ plugins {
     id("androidx.navigation.safeargs")
     id("com.google.devtools.ksp")
 }
+
+val localProperties = Properties()
+localProperties.load(FileInputStream(rootProject.file("local.properties")))
 
 android {
     namespace = "com.example.pickuppal"
@@ -23,10 +28,17 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        //val MAPS_API_KEY = gradleLocalProperties().getProperty("MAPS_API_KEY")
+        //val localProperties = Properties()
+        //localProperties.load(FileInputStream(rootProject.file("local.properties")))
+        //val MAPS_API_KEY = localProperties["MAPS_API_KEY"].toString()
+
+        //buildConfigField("String", "MAPS_API_KEY", MAPS_API_KEY)
     }
 
     buildTypes {
+        debug{
+            buildConfigField("String", "MAPS_API_KEY", "\"" + localProperties["MAPS_API_KEY"].toString() + "\"")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -56,6 +68,10 @@ android {
 
     buildFeatures {
         viewBinding = true
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 }
 
