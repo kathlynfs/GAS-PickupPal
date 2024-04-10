@@ -1,6 +1,7 @@
 package com.example.pickuppal
 
 import FirebaseAPI
+import android.content.ContentValues.TAG
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -35,6 +36,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.core.content.FileProvider
+import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import retrofit2.Retrofit
+import retrofit2.converter.moshi.MoshiConverterFactory
+import retrofit2.create
 import java.io.File
 import kotlin.math.min
 
@@ -101,6 +108,7 @@ class PostingFragment : Fragment() {
         val imageBitmapState = remember { mutableStateOf<ImageBitmap?>(null)}
         val navController = findNavController()
         val context = LocalContext.current
+        val viewModel: SharedViewModel by activityViewModels()
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -144,7 +152,7 @@ class PostingFragment : Fragment() {
                                 val name:String = photoName?: "defaultphotoname"
                                 firebaseAPI.uploadImage(bitmap, name) { imageUrl ->
                                     if (imageUrl != null) {
-                                        val data = PostingData (
+                                        val data = PostingData(
                                             userID = user.userId,
                                             title = titleState.value.text,
                                             location = locationState.value.text,
@@ -154,7 +162,11 @@ class PostingFragment : Fragment() {
                                         )
                                         firebaseAPI.uploadPostingData(data, user)
                                         navController.popBackStack()
-                                    } else {
+
+                                        val location = locationState.value.text
+                                        viewModel.setNewLocation(location)
+
+                                    }else {
                                         Toast.makeText(context, "Error. Please try again.", Toast.LENGTH_SHORT).show()
                                     }
                                 }

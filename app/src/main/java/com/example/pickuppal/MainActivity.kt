@@ -1,40 +1,26 @@
 package com.example.pickuppal
 
 import android.Manifest
-import android.content.Context
+import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.location.Location
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.AttributeSet
-import android.view.View
+import android.util.Log
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.compose.setContent
-import androidx.activity.result.IntentSenderRequest
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.core.app.ActivityCompat
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.commit
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.google.android.gms.auth.api.identity.Identity
 import kotlinx.coroutines.launch
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.tasks.Task
 
-import com.example.pickuppal.PostingFragment
 import com.google.android.gms.location.Priority.PRIORITY_LOW_POWER
-import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.tasks.CancellationToken
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.gms.tasks.OnTokenCanceledListener
-import kotlin.math.sign
 
 class MainActivity : AppCompatActivity(), CurrentLocationDeterminer {
 //    private val googleOAuthClient by lazy {
@@ -50,54 +36,32 @@ class MainActivity : AppCompatActivity(), CurrentLocationDeterminer {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-//
-//        val sharedViewModel = ViewModelProvider(this)[SharedViewModel::class.java]
-//        sharedViewModel.setCurrentFragment("signin")
-//
-//        val fragmentManager = supportFragmentManager
-//        fragmentManager.commit{
-//            setReorderingAllowed(true)
-//        }
-//
-//        // create instances of new fragments here
-//        val signInFragment = fragmentManager.findFragmentById(R.id.sign_in_fragment_container) as SignInFragment
-//        val mapFragment = fragmentManager.findFragmentById(R.id.map_fragment_container) as MapFragment
-//        val postingFragment = fragmentManager.findFragmentById(R.id.posting_fragment_container) as PostingFragment
-//
-//        // while not all transitions between fragments are set up,
-//        // feel free to manually change what fragment should be shown
-//        // by updating setCurrentFragment()
-//        // ex: sharedViewModel.setCurrentFragment("posting")
-//        // to have app open on posting screen
-//        sharedViewModel.setCurrentFragment("signin")
-//        sharedViewModel.getCurrentFragment().observe(this) { frag ->
-//            if(frag == "signin")
-//            {
-//                fragmentManager.beginTransaction()
-//                    .attach(signInFragment)
-//                    .detach(mapFragment)
-//                    .detach(postingFragment)
-//                    .commit()
-//            }
-//            else if(frag == "map")
-//            {
-//                fragmentManager.beginTransaction()
-//                    .detach(signInFragment)
-//                    .attach(mapFragment)
-//                    .detach(postingFragment)
-//                    .commit()
-//            }
-//            else if (frag == "posting")
-//            {
-//                fragmentManager.beginTransaction()
-//                    .detach(signInFragment)
-//                    .detach(mapFragment)
-//                    .attach(postingFragment)
-//                    .commit()
-//            }
-//        }
-    }
 
+        val viewModel = ViewModelProvider(this)[SharedViewModel::class.java]
+        viewModel.getNewLocation().observe(this) {location ->
+            this.lifecycleScope.launch {
+                try {
+                    val response =
+                        GeocoderResultsRepository().fetchGeocoderResults(location)
+                    Log.d(ContentValues.TAG, "Response received: $response")
+                    if (response.results[0].geometry.location.lat != null) {
+                        var lat = response.results[0].geometry.location.lat.toDouble()
+                        var lng = response.results[0].geometry.location.lng.toDouble()
+                        Log.d(ContentValues.TAG, "Lat: $lat")
+                        Log.d(ContentValues.TAG, "Lat: $lng")
+                        var latLng = LatLng(lat, lng)
+                        viewModel.setNewLatLng(latLng)
+                    } else {
+                        Log.e(ContentValues.TAG, "Null lat")
+                        // do something
+                    }
+                } catch (ex: Exception) {
+                    Log.e(ContentValues.TAG, "Failed to fetch LatLong", ex)
+                    // maybe show a toast
+                }
+            }
+        }
+    }
 
     override fun determineCurrentLocation(): Task<Location> {
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
