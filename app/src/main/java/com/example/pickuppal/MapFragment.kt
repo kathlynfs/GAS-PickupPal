@@ -107,12 +107,6 @@ class MapFragment : Fragment() {
                         currentLocation?.let{ location ->
                             val startingLocation = LatLng(location.latitude, location.longitude)
 
-                            for (pin in mapPins) {
-                                googleMap.addMarker(
-                                    MarkerOptions().position(pin).title("New Pin")
-                                )
-                            }
-
                             googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(startingLocation, 15f))
                         }
                     },
@@ -171,6 +165,13 @@ class MapFragment : Fragment() {
                         currentLocation.value = location
                         currentLocation.value?.let { currentLocation ->
                             val startingLocation = LatLng(currentLocation.latitude, currentLocation.longitude)
+                            for (pin in mapPins) {
+                                googleMap.addMarker(
+                                    MarkerOptions().position(pin).title("New Pin"))
+                            }
+
+                            googleMap.addMarker(
+                                MarkerOptions().position(startingLocation).title("New Pin"))
                             googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(startingLocation, 15f))
                         }
                         onMapReady(googleMap)
