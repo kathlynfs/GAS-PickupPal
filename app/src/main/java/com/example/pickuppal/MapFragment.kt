@@ -3,6 +3,7 @@ package com.example.pickuppal
 import android.content.Context
 import android.location.Location
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -61,6 +62,8 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.Observer
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import coil.compose.AsyncImage
@@ -72,6 +75,9 @@ import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.tasks.Task
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import retrofit2.Retrofit
+import retrofit2.converter.moshi.MoshiConverterFactory
+import retrofit2.create
 
 class MapFragment : Fragment() {
     private var currentLocation: Location? = null
@@ -86,6 +92,11 @@ class MapFragment : Fragment() {
         val args = MapFragmentArgs.fromBundle(requireArguments())
 
         val profilePicture = args.user.profilePictureUrl
+
+        val viewModel: SharedViewModel by activityViewModels()
+        viewModel.getNewLatLng().observe(viewLifecycleOwner, Observer<LatLng> {latlng ->
+            mapPins.add(latlng)
+        })
 
         return ComposeView(requireContext()).apply {
             val navController = NavHostFragment.findNavController(this@MapFragment)
