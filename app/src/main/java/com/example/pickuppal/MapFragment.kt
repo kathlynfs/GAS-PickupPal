@@ -5,6 +5,7 @@ import PostingDataListCallBack
 import android.content.ContentValues
 import android.content.Context
 import android.location.Location
+import android.media.Image
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -12,6 +13,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -47,11 +50,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Alignment.Companion.BottomCenter
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -71,23 +76,27 @@ import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import coil.compose.AsyncImage
 import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
+
 import com.google.android.gms.maps.MapView
+import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.tasks.Task
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 class MapFragment : Fragment() {
     private var currentLocation: Location? = null
     private lateinit var currentLocationDeterminer: CurrentLocationDeterminer
-    private var mapPins = mutableListOf<LatLng>()
     private lateinit var db: DatabaseReference
     private var postingDataList = mutableListOf<PostingData>()
 
@@ -132,13 +141,6 @@ class MapFragment : Fragment() {
 
             setContent {
                 MapScreen(
-                    onMapReady = { googleMap ->
-                        currentLocation?.let{ location ->
-                            val startingLocation = LatLng(location.latitude, location.longitude)
-
-                            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(startingLocation, 15f))
-                        }
-                    },
                     profilePictureUrl = profilePicture!!,
                     navController = navController
                 )
@@ -171,7 +173,6 @@ class MapFragment : Fragment() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun MapScreen(
-        onMapReady: (GoogleMap) -> Unit,
         profilePictureUrl: String,
         navController: NavController
     ) {
@@ -183,31 +184,48 @@ class MapFragment : Fragment() {
         val searchQuery = remember { mutableStateOf("") }
         val isSearchActive = remember { mutableStateOf(false) }
         val isSettingsMenuOpen = remember { mutableStateOf(false) }
+        val isMarkerClickPostingDataOpen = remember{ mutableStateOf(false)}
+        val postingData = remember{mutableStateOf<PostingData?>(null)}
+        var cameraPositionState = rememberCameraPositionState()
+
+        LaunchedEffect(Unit)
+        {
+            coroutineScope.launch {
+                val location = determineCurrentLocation().await()
+                currentLocation.value = location
+            }
+        }
+
+        currentLocation.value?.let { currentLocation ->
+            val startingLocation =
+                LatLng(currentLocation.latitude, currentLocation.longitude)
+            cameraPositionState = rememberCameraPositionState {
+                position = CameraPosition.fromLatLngZoom(startingLocation, 15f)
+            }
+        }
 
         Box(modifier = Modifier.fillMaxSize()) {
             AndroidView(
                 factory = { mapView },
                 modifier = Modifier.fillMaxSize()
-            ) { mapView ->
-                mapView.getMapAsync { googleMap ->
-                    coroutineScope.launch {
-                        val location = determineCurrentLocation().await()
-                        currentLocation.value = location
-                        currentLocation.value?.let { currentLocation ->
-                            val startingLocation = LatLng(currentLocation.latitude, currentLocation.longitude)
+            )
 
-                            for(data in postingDataList) {
-                                var pin = LatLng(data.lat, data.lng)
-                                googleMap.addMarker(
-                                    MarkerOptions().position(pin).title(data.title)
-                                )
+            GoogleMap(
+                modifier = Modifier.fillMaxSize(),
+                cameraPositionState = cameraPositionState,
+                content = {
+                    postingDataList.forEach{ data ->
+                        Marker(
+                            state = MarkerState(LatLng(data.lat, data.lng)),
+                            onClick = {
+                                postingData.value = data
+                                isMarkerClickPostingDataOpen.value = true
+                                isMarkerClickPostingDataOpen.value
                             }
-                            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(startingLocation, 15f))
-                        }
-                        onMapReady(googleMap)
+                        )
                     }
                 }
-            }
+            )
 
             ExtendedFloatingActionButton(
                 onClick = {
@@ -297,8 +315,61 @@ class MapFragment : Fragment() {
         if (isSettingsMenuOpen.value) {
             SearchSettingsMenu(onDismissRequest = { isSettingsMenuOpen.value = false })
         }
+
+        BackHandler(enabled = isMarkerClickPostingDataOpen.value) {
+            isMarkerClickPostingDataOpen.value = false
+        }
+
+        if (isMarkerClickPostingDataOpen.value) {
+            MarkerClickPostingData(postingData.value!!, onDismissRequest = { isMarkerClickPostingDataOpen.value = false })
+        }
     }
 
+
+    @Composable
+    fun MarkerClickPostingData(postingData: PostingData, onDismissRequest: () -> Unit) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable { onDismissRequest() }
+        ) {
+            Card(
+                modifier = Modifier
+                    .align(BottomCenter)
+                    .height(400.dp)
+                    .fillMaxWidth()
+                    .clickable(enabled = false) {},
+                shape = RectangleShape,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = postingData.title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    Text(
+                        text = postingData.description,
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    // need to add image
+
+                    // should add address
+
+                    // need to add track/claim button
+
+                }
+            }
+        }
+    }
 
     @Composable
     fun SearchSettingsMenu(onDismissRequest: () -> Unit) {
