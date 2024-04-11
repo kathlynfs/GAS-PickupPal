@@ -4,31 +4,35 @@ import androidx.lifecycle.ViewModel
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import com.google.android.gms.maps.model.LatLng
+import java.lang.reflect.Array
 
 
 class SharedViewModel : ViewModel()
 {
-    private var newLocation = MutableLiveData<String>()
-    private var newLatLng = MutableLiveData<LatLng>()
+    private var postingDataList = MutableLiveData<MutableList<PostingData>>()
 
-    fun setNewLocation(location: String)
+    fun addToPostingDataList(postingData: PostingData)
     {
-        newLocation.value = location
+        if(postingDataList.value == null)
+        {
+            postingDataList.value = mutableListOf()
+            postingDataList.value!!.add(postingData)
+        }
+        else {
+            postingDataList.value!!.add(postingData)
+        }
     }
 
-    fun getNewLocation(): MutableLiveData<String>
+    fun deleteFromPostingDataList(postingData: PostingData)
     {
-        return newLocation
+
     }
 
-    fun setNewLatLng(latLng: LatLng)
+    fun getPostingDataList(): MutableLiveData<MutableList<PostingData>>
     {
-        newLatLng.value = latLng
+        return postingDataList
     }
 
-    fun getNewLatLng(): MutableLiveData<LatLng>
-    {
-        return newLatLng
-    }
+
 
 }
