@@ -1,5 +1,8 @@
 package com.example.pickuppal
 
+import FirebaseAPI
+import PostingDataListCallBack
+import android.content.ContentValues
 import android.content.Context
 import android.location.Location
 import android.os.Bundle
@@ -73,30 +76,56 @@ import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.tasks.Task
+import com.google.firebase.database.ChildEventListener
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import retrofit2.Retrofit
-import retrofit2.converter.moshi.MoshiConverterFactory
-import retrofit2.create
 
 class MapFragment : Fragment() {
     private var currentLocation: Location? = null
     private lateinit var currentLocationDeterminer: CurrentLocationDeterminer
     private var mapPins = mutableListOf<LatLng>()
+    private lateinit var db: DatabaseReference
+    private var postingDataList = mutableListOf<PostingData>()
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View
+    {
         val args = MapFragmentArgs.fromBundle(requireArguments())
 
         val profilePicture = args.user.profilePictureUrl
 
-        val viewModel: SharedViewModel by activityViewModels()
-        viewModel.getNewLatLng().observe(viewLifecycleOwner, Observer<LatLng> {latlng ->
-            mapPins.add(latlng)
+        db = FirebaseAPI().getDB()
+
+        db.child("posting_data").addChildEventListener(object: ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                var data = snapshot.getValue(PostingData::class.java)
+                Log.d(ContentValues.TAG, "snapshot.value = $data ")
+                postingDataList.add(data!!)
+            }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                TODO("Not yet implemented")
+            }
+
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
+                TODO("Not yet implemented")
+            }
+
+            override fun onChildRemoved(snapshot: DataSnapshot) {
+                var data = snapshot.getValue(PostingData::class.java)
+                Log.d(ContentValues.TAG, "snapshot.value = $data ")
+                postingDataList.remove(data)
+            }
+            override fun onCancelled(error: DatabaseError) {
+                TODO("Not yet implemented")
+            }
+
         })
+
 
         return ComposeView(requireContext()).apply {
             val navController = NavHostFragment.findNavController(this@MapFragment)
@@ -114,6 +143,7 @@ class MapFragment : Fragment() {
                     navController = navController
                 )
             }
+
         }
     }
 
@@ -165,13 +195,13 @@ class MapFragment : Fragment() {
                         currentLocation.value = location
                         currentLocation.value?.let { currentLocation ->
                             val startingLocation = LatLng(currentLocation.latitude, currentLocation.longitude)
-                            for (pin in mapPins) {
-                                googleMap.addMarker(
-                                    MarkerOptions().position(pin).title("New Pin"))
-                            }
 
-                            googleMap.addMarker(
-                                MarkerOptions().position(startingLocation).title("New Pin"))
+                            for(data in postingDataList) {
+                                var pin = LatLng(data.lat, data.lng)
+                                googleMap.addMarker(
+                                    MarkerOptions().position(pin).title(data.title)
+                                )
+                            }
                             googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(startingLocation, 15f))
                         }
                         onMapReady(googleMap)
