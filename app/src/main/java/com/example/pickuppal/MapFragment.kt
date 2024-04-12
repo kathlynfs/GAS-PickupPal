@@ -100,7 +100,6 @@ class MapFragment : Fragment() {
     private lateinit var db: DatabaseReference
     private var postingDataList = mutableListOf<PostingData>()
 
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View
     {
         val args = MapFragmentArgs.fromBundle(requireArguments())
@@ -135,17 +134,13 @@ class MapFragment : Fragment() {
 
         })
 
-
         return ComposeView(requireContext()).apply {
             val navController = NavHostFragment.findNavController(this@MapFragment)
 
             setContent {
                 MapScreen(
                     profilePictureUrl = profilePicture!!,
-                    navController = navController
-                )
-            }
-
+                    navController = navController) }
         }
     }
 
@@ -360,7 +355,10 @@ class MapFragment : Fragment() {
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
-                    // need to add image
+                    AsyncImage(
+                        model = postingData.photoUrl,
+                        contentDescription = postingData.description
+                    )
 
                     // should add address
 
