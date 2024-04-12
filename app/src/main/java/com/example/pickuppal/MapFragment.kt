@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DockedSearchBar
@@ -346,12 +347,17 @@ class MapFragment : Fragment() {
                 ) {
                     Text(
                         text = postingData.title,
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    Text(
+                        text = postingData.reverseGeocodedAddress,
+                        style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     Text(
                         text = postingData.description,
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
@@ -359,10 +365,6 @@ class MapFragment : Fragment() {
                         model = postingData.photoUrl,
                         contentDescription = postingData.description
                     )
-
-                    // should add address
-
-                    // need to add track/claim button
 
                 }
             }
