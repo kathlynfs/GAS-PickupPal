@@ -4,7 +4,6 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.findViewTreeViewModelStoreOwner
 import com.example.pickuppal.PostingData
-import com.example.pickuppal.SharedViewModel
 import com.example.pickuppal.UserData
 import com.example.pickuppal.UserStatistics
 import com.google.firebase.Firebase
@@ -149,28 +148,6 @@ class FirebaseAPI {
             }
     }
 
-    fun getAllPostingData(callback: PostingDataListCallBack)
-    {
-        val allElements = mutableListOf<Any>() // List to store retrieved elements
-
-        db.get().addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                val snapshot = task.result
-                for (childSnapshot in snapshot.children) {
-                    val element = childSnapshot.value // Access element value
-                    allElements.add(element!!) // Add element to the list
-                }
-                // Handle retrieved elements (e.g., update UI, perform actions)
-            } else {
-                Log.w("Firebase", "Failed to read value.", task.exception)
-            }
-
-            var postingDataList = allElements as List<PostingData>
-
-            callback.onPostingDataListReceived(postingDataList)
-        }
-    }
-
     fun getPostingDataList(data: UserData, callback: PostingDataListCallBack) {
         val userId = data.userId
         val postingDataRef = db.child("posting_data")
@@ -192,6 +169,7 @@ class FirebaseAPI {
                                 location = postData.location,
                                 lat = postData.lat,
                                 lng = postData.lng,
+                                reverseGeocodedAddress = postData.reverseGeocodedAddress,
                                 description = postData.description,
                                 claimed = postData.claimed,
                                 photoUrl = postData.photoUrl
