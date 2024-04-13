@@ -1,6 +1,7 @@
 package com.example.pickuppal
 
 import FirebaseAPI
+import android.content.ContentValues
 import android.content.ContentValues.TAG
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -38,11 +39,13 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.core.content.FileProvider
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
+import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.create
 import java.io.File
+import java.util.UUID
 import kotlin.math.min
 
 
@@ -108,7 +111,7 @@ class PostingFragment : Fragment() {
         val imageBitmapState = remember { mutableStateOf<ImageBitmap?>(null)}
         val navController = findNavController()
         val context = LocalContext.current
-        val viewModel: SharedViewModel by activityViewModels()
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -150,24 +153,69 @@ class PostingFragment : Fragment() {
                             photoUri?.let { uri ->
                                 val bitmap = BitmapFactory.decodeStream(context.contentResolver.openInputStream(uri))
                                 val name:String = photoName?: "defaultphotoname"
-                                firebaseAPI.uploadImage(bitmap, name) { imageUrl ->
-                                    if (imageUrl != null) {
-                                        val data = PostingData(
-                                            userID = user.userId,
-                                            title = titleState.value.text,
-                                            location = locationState.value.text,
-                                            description = descriptionState.value.text,
-                                            claimed = false,
-                                            photoUrl = imageUrl
-                                        )
-                                        firebaseAPI.uploadPostingData(data, user)
-                                        navController.popBackStack()
+                                val id = UUID.randomUUID().toString()
 
-                                        val location = locationState.value.text
-                                        viewModel.setNewLocation(location)
+                                // geocoding address to lat + long
+                                lifecycleScope.launch {
+                                    try {
+                                        val response =
+                                            GeocoderResultsRepository().fetchGeocoderResults(locationState.value.text)
+                                        Log.d(ContentValues.TAG, "Response received: $response")
+                                        if (response.results[0].geometry.location.lat != null) {
+                                            // once lat and long have been retrieved by geocoding,
+                                            // reverse geocode to get cleanly formatted address
+                                            var lat = response.results[0].geometry.location.lat.toDouble()
+                                            var lng = response.results[0].geometry.location.lng.toDouble()
 
-                                    }else {
-                                        Toast.makeText(context, "Error. Please try again.", Toast.LENGTH_SHORT).show()
+                                            try {
+                                                val response =
+                                                    ReverseGeocoderResultsRepository().fetchReverseGeocoderResults(
+                                                        lat.toString() + ", " + lng.toString()
+                                                    )
+                                                Log.d(ContentValues.TAG, "reverse geocoding: $response")
+                                                val reverseGeocodedAddress = response.results[0].address
+                                                Log.d(ContentValues.TAG, "address: $reverseGeocodedAddress")
+
+                                                Log.d(ContentValues.TAG, "Lat: $lat")
+                                                Log.d(ContentValues.TAG, "Lat: $lng")
+
+                                                firebaseAPI.uploadImage(bitmap, name) { imageUrl ->
+                                                    if (imageUrl != null) {
+                                                        val data = PostingData(
+                                                            postID = id,
+                                                            userID = user.userId,
+                                                            title = titleState.value.text,
+                                                            location = locationState.value.text,
+                                                            lat = lat,
+                                                            lng = lng,
+                                                            reverseGeocodedAddress = reverseGeocodedAddress,
+                                                            description = descriptionState.value.text,
+                                                            claimed = false,
+                                                            photoUrl = imageUrl
+                                                        )
+                                                        firebaseAPI.uploadPostingData(data, user)
+                                                        navController.popBackStack()
+
+                                                    } else {
+                                                        Toast.makeText(
+                                                            context,
+                                                            "Error. Please try again.",
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                    }
+                                                }
+                                            }
+                                            catch(ex: Exception)
+                                            {
+                                                Log.e(ContentValues.TAG, "Failed to fetch address", ex)
+                                            }
+                                        } else {
+                                            Log.e(ContentValues.TAG, "Null lat")
+                                            // do something
+                                        }
+                                    } catch (ex: Exception) {
+                                        Log.e(ContentValues.TAG, "Failed to fetch LatLong", ex)
+                                        // maybe show a toast
                                     }
                                 }
                             }

@@ -1,7 +1,9 @@
 package com.example.pickuppal
 
+import FirebaseAPI
 import android.Manifest
 import android.content.ContentValues
+import android.content.ContentValues.TAG
 import android.content.pm.PackageManager
 import android.location.Location
 import androidx.appcompat.app.AppCompatActivity
@@ -36,31 +38,6 @@ class MainActivity : AppCompatActivity(), CurrentLocationDeterminer {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        val viewModel = ViewModelProvider(this)[SharedViewModel::class.java]
-        viewModel.getNewLocation().observe(this) {location ->
-            this.lifecycleScope.launch {
-                try {
-                    val response =
-                        GeocoderResultsRepository().fetchGeocoderResults(location)
-                    Log.d(ContentValues.TAG, "Response received: $response")
-                    if (response.results[0].geometry.location.lat != null) {
-                        var lat = response.results[0].geometry.location.lat.toDouble()
-                        var lng = response.results[0].geometry.location.lng.toDouble()
-                        Log.d(ContentValues.TAG, "Lat: $lat")
-                        Log.d(ContentValues.TAG, "Lat: $lng")
-                        var latLng = LatLng(lat, lng)
-                        viewModel.setNewLatLng(latLng)
-                    } else {
-                        Log.e(ContentValues.TAG, "Null lat")
-                        // do something
-                    }
-                } catch (ex: Exception) {
-                    Log.e(ContentValues.TAG, "Failed to fetch LatLong", ex)
-                    // maybe show a toast
-                }
-            }
-        }
     }
 
     override fun determineCurrentLocation(): Task<Location> {

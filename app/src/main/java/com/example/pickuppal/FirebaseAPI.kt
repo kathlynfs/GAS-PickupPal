@@ -1,12 +1,15 @@
 import android.graphics.Bitmap
-import android.net.Uri
 import android.util.Log
+import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.findViewTreeViewModelStoreOwner
 import com.example.pickuppal.PostingData
 import com.example.pickuppal.UserData
 import com.example.pickuppal.UserStatistics
 import com.google.firebase.Firebase
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.database
 import com.google.firebase.storage.storage
@@ -16,6 +19,10 @@ class FirebaseAPI {
 
     private val TAG = "firebaseAPI"
     private val db = Firebase.database.reference
+
+    fun getDB(): DatabaseReference {
+        return db
+    }
 
     fun deletePostingData(userData: UserData, dataId: String) {
         val postingDataRef = db.child("posting_data").child(dataId)
@@ -41,6 +48,7 @@ class FirebaseAPI {
 
             }
     }
+
     fun uploadPostingData(data: PostingData, userData: UserData) {
         db.child("posting_data").child(data.postID).updateChildren(data.toMap())
             .addOnSuccessListener {
@@ -57,13 +65,14 @@ class FirebaseAPI {
                         Log.e(TAG, "Error retrieving user statistics", e)
                     }
                 })
+
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "Error adding posting data", e)
             }
     }
 
-    fun uploadImage(bitmap: Bitmap, imageName: String, callback: (String?) -> Unit)  {
+    fun uploadImage(bitmap: Bitmap, imageName: String, callback: (String?) -> Unit) {
         val storage = Firebase.storage
         val storageRef = storage.reference
         val imagesRef = storageRef.child("images")
@@ -89,10 +98,7 @@ class FirebaseAPI {
         }
     }
 
-
-
-
-    fun updateUserStatistics(data : UserStatistics) {
+    fun updateUserStatistics(data: UserStatistics) {
         db.child("user_statistics").child(data.userID).updateChildren(data.toMap())
             .addOnSuccessListener {
                 Log.d(TAG, "Update user statistics")
@@ -161,6 +167,9 @@ class FirebaseAPI {
                                 userID = postData.userID,
                                 title = postData.title,
                                 location = postData.location,
+                                lat = postData.lat,
+                                lng = postData.lng,
+                                reverseGeocodedAddress = postData.reverseGeocodedAddress,
                                 description = postData.description,
                                 claimed = postData.claimed,
                                 photoUrl = postData.photoUrl
@@ -180,12 +189,12 @@ class FirebaseAPI {
     }
 }
 
-interface PostingDataListCallBack {
-    fun onPostingDataListReceived(postingDataList: List<PostingData>)
-    fun onPostingDataListError(e: Exception)
-}
+    interface PostingDataListCallBack {
+        fun onPostingDataListReceived(postingDataList: List<PostingData>)
+        fun onPostingDataListError(e: Exception)
+    }
 
-interface UserStatisticsCallback {
-    fun onUserStatisticsReceived(userStatistics: UserStatistics)
-    fun onUserStatisticsError(e: Exception)
-}
+    interface UserStatisticsCallback {
+        fun onUserStatisticsReceived(userStatistics: UserStatistics)
+        fun onUserStatisticsError(e: Exception)
+    }
