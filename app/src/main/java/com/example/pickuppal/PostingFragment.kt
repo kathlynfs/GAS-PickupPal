@@ -14,6 +14,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +33,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
@@ -39,6 +46,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.core.content.FileProvider
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
@@ -47,6 +55,9 @@ import retrofit2.create
 import java.io.File
 import java.util.UUID
 import kotlin.math.min
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+
 
 
 class PostingFragment : Fragment() {
@@ -111,6 +122,10 @@ class PostingFragment : Fragment() {
         val imageBitmapState = remember { mutableStateOf<ImageBitmap?>(null)}
         val navController = findNavController()
         val context = LocalContext.current
+        val repository = GooglePlacesRepository(GooglePlacesAPI.create())
+        val factory = GooglePlacesViewModelFactory(repository)
+        val googlePlacesViewModel: GooglePlacesViewModel = viewModel(factory = factory)
+        val predictions by googlePlacesViewModel.predictions.observeAsState()
 
         Box(
             modifier = Modifier
@@ -135,10 +150,53 @@ class PostingFragment : Fragment() {
                 }
                 OutlinedTextField(
                     value = locationState.value,
-                    onValueChange = { locationState.value = it },
+                    onValueChange = {
+                        locationState.value = it
+                        googlePlacesViewModel.getPredictions(it.text)
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text("Add a Location", color = Color.Gray) }
                 )
+
+                when (val resource = predictions) {
+                    is Resource.Success -> {
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 200.dp)
+                        ) {
+                            itemsIndexed(resource.data?.predictions ?: emptyList()) { _, prediction ->
+                                Text(
+                                    text = prediction.description,
+                                    modifier = Modifier
+                                        .clickable {
+                                            locationState.value = TextFieldValue(prediction.description)
+                                        }
+                                        .fillMaxWidth()
+                                        .padding(8.dp)
+                                )
+                            }
+                        }
+                    }
+                    is Resource.Error -> {
+                        Text(
+                            text = "Error fetching location suggestions",
+                            color = Color.Red,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                    is Resource.Loading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .padding(8.dp)
+                        )
+                    }
+                    else -> {
+                        Text(
+                            text = "No location suggestions available",
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                }
                 OutlinedTextField(
                     value = descriptionState.value,
                     onValueChange = { descriptionState.value = it },
