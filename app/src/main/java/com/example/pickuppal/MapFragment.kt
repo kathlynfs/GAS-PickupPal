@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Divider
 import androidx.compose.material.Text
@@ -154,11 +155,11 @@ class MapFragment : Fragment() {
 
         val args = MapFragmentArgs.fromBundle(requireArguments())
         val user = args.user
-        Toast.makeText(
-            requireContext(),
-            user.userId,
-            Toast.LENGTH_SHORT
-        ).show()
+//        Toast.makeText(
+//            requireContext(),
+//            user.userId,
+//            Toast.LENGTH_SHORT
+//        ).show()
     }
 
     override fun onAttach(context: Context) {
@@ -187,6 +188,7 @@ class MapFragment : Fragment() {
         val isMarkerClickPostingDataOpen = remember{ mutableStateOf(false)}
         val postingData = remember{mutableStateOf<PostingData?>(null)}
         var cameraPositionState = rememberCameraPositionState()
+        val filteredPostingDataList = remember { mutableStateOf(postingDataList) }
 
         LaunchedEffect(Unit)
         {
@@ -209,7 +211,7 @@ class MapFragment : Fragment() {
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = cameraPositionState,
                 content = {
-                    postingDataList.forEach{ data ->
+                    filteredPostingDataList.value.forEach{ data ->
                         Marker(
                             state = MarkerState(LatLng(data.lat, data.lng)),
                             onClick = {
@@ -249,8 +251,24 @@ class MapFragment : Fragment() {
 
             DockedSearchBar(
                 query = searchQuery.value,
-                onQueryChange = { searchQuery.value = it },
-                onSearch = { /* Handle search */ },
+                onQueryChange = {  query ->
+                    searchQuery.value = query
+                    filteredPostingDataList.value = if (query.isNotBlank()) {
+                        postingDataList.filter { data ->
+                            data.title.contains(query, ignoreCase = true) ||
+                            data.description.contains(query, ignoreCase = true) ||
+                            data.reverseGeocodedAddress.contains(query, ignoreCase = true)
+                        }.toMutableList()
+                    } else {
+                        postingDataList
+                    }
+                },
+                onSearch = {
+                    isSearchActive.value = false
+                    filteredPostingDataList.value = postingDataList.filter { data ->
+                        data.title.equals(searchQuery.value, ignoreCase = true)
+                    }.toMutableList()
+                },
                 active = isSearchActive.value,
                 onActiveChange = { isSearchActive.value = it },
                 placeholder = { Text("Search") },
@@ -264,6 +282,7 @@ class MapFragment : Fragment() {
                             if (isSearchActive.value) {
                                 isSearchActive.value = false
                                 searchQuery.value = ""
+                                filteredPostingDataList.value = postingDataList
                             }
                         }
                     ) {
@@ -291,11 +310,18 @@ class MapFragment : Fragment() {
                 },
                 content = {
                     LazyColumn {
-                        // Add search results or suggestions here
-                        items(5) { index ->
+                        this.items(filteredPostingDataList.value) { data ->
                             ListItem(
-                                headlineContent = { Text("Search Result $index") },
-                                modifier = Modifier.clickable { /* Handle item click */ }
+                                headlineContent = { Text(data.title) },
+                                supportingContent = { Text(data.description) },
+                                modifier = Modifier.clickable {
+                                    searchQuery.value = data.title
+                                    isSearchActive.value = false
+                                    postingData.value = data
+                                    filteredPostingDataList.value = postingDataList.filter { item ->
+                                        item.title.equals(data.title, ignoreCase = true)
+                                    }.toMutableList()
+                                }
                             )
                         }
                     }
@@ -366,7 +392,7 @@ class MapFragment : Fragment() {
                         modifier = Modifier
                             .align(Alignment.End),
 
-                    ) {
+                        ) {
                         // want to add ability to click on image and have it show up full screen
                         AsyncImage(
                             model = postingData.photoUrl,
@@ -412,17 +438,17 @@ class MapFragment : Fragment() {
                 shape = RectangleShape,
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface)) {
-                    ExtendedFloatingActionButton(
-                        onClick = { onDismissRequest()},
-                        modifier = Modifier.align(Alignment.End)
-                    )
-                    {
-                        Text(text = "Done")
-                    }
-                    AsyncImage(
-                        model = postingData.photoUrl,
-                        contentDescription = postingData.description,
-                    )
+                ExtendedFloatingActionButton(
+                    onClick = { onDismissRequest()},
+                    modifier = Modifier.align(Alignment.End)
+                )
+                {
+                    Text(text = "Done")
+                }
+                AsyncImage(
+                    model = postingData.photoUrl,
+                    contentDescription = postingData.description,
+                )
             }
         }
     }
