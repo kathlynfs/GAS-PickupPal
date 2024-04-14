@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,6 +34,8 @@ import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
@@ -58,6 +61,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.BottomCenter
+import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -201,11 +205,6 @@ class MapFragment : Fragment() {
         }
 
         Box(modifier = Modifier.fillMaxSize()) {
-            AndroidView(
-                factory = { mapView },
-                modifier = Modifier.fillMaxSize()
-            )
-
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = cameraPositionState,
@@ -324,6 +323,8 @@ class MapFragment : Fragment() {
 
     @Composable
     fun MarkerClickPostingData(postingData: PostingData, onDismissRequest: () -> Unit) {
+        val shouldTrackRoute = remember { mutableStateOf(false) }
+        val shouldMakeImageFullScreen = remember { mutableStateOf(false)}
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -361,12 +362,67 @@ class MapFragment : Fragment() {
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.End),
+
+                    ) {
+                        // want to add ability to click on image and have it show up full screen
+                        AsyncImage(
+                            model = postingData.photoUrl,
+                            contentDescription = postingData.description,
+                            modifier = Modifier
+                                .clickable(onClick = {shouldMakeImageFullScreen.value = true} )
+                        )
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        ExtendedFloatingActionButton(
+                            onClick = { shouldTrackRoute.value = true },
+                            icon = { Icon(Icons.Filled.Place, "Extended floating action button.") },
+                            text = { Text(text = "Directions") },
+                            modifier = Modifier
+                                .align(Alignment.Bottom)
+                        )
+                    }
+                }
+            }
+        }
+
+        BackHandler(enabled = shouldMakeImageFullScreen.value) {
+            shouldMakeImageFullScreen.value = false
+        }
+
+        if (shouldMakeImageFullScreen.value) {
+            MakeImageFullscreen(postingData, onDismissRequest = { shouldMakeImageFullScreen.value = false })
+        }
+    }
+
+    // will improve appearance of this in future
+    @Composable
+    fun MakeImageFullscreen(postingData: PostingData, onDismissRequest: () -> Unit)
+    {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+        ){
+            Card(
+                modifier = Modifier
+                    .fillMaxSize(),
+                shape = RectangleShape,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface)) {
+                    ExtendedFloatingActionButton(
+                        onClick = { onDismissRequest()},
+                        modifier = Modifier.align(Alignment.End)
+                    )
+                    {
+                        Text(text = "Done")
+                    }
                     AsyncImage(
                         model = postingData.photoUrl,
-                        contentDescription = postingData.description
+                        contentDescription = postingData.description,
                     )
-
-                }
             }
         }
     }
