@@ -10,6 +10,8 @@ import com.google.firebase.Firebase
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.MutableData
+import com.google.firebase.database.Transaction
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.database
 import com.google.firebase.storage.storage
@@ -77,7 +79,6 @@ class FirebaseAPI {
             claimed = true,
             claimedBy = claimingUser.userId
         )
-        Log.d("TAG", data.postID)
         db.child("posting_data").child(data.postID).updateChildren(updatedPostingData.toMap())
             .addOnSuccessListener {
                 getUserStatistics(claimingUser, object : UserStatisticsCallback {
@@ -149,9 +150,10 @@ class FirebaseAPI {
                 } else {
                     val defaultStatistics = UserStatistics(
                         userID = userId,
-                        averageRating = 5.0f,
                         numItemsPosted = 0,
-                        numItemsClaimed = 0
+                        numItemsClaimed = 0,
+                        numRatings = 0,
+                        totalRating = 0,
                     )
                     db.child("user_statistics").child(userId).setValue(defaultStatistics)
                         .addOnSuccessListener {
@@ -168,6 +170,39 @@ class FirebaseAPI {
                 Log.d(TAG, "get user statistics called :(")
                 Log.e(TAG, "Error retrieving user statistics", e)
                 callback.onUserStatisticsError(e)
+            }
+    }
+
+    fun submitRating(postingData: PostingData, rating: Int) {
+        val updatedPostingData = postingData.copy(
+            rating = rating
+        )
+        db.child("posting_data").child(postingData.postID).updateChildren(updatedPostingData.toMap())
+            .addOnSuccessListener {
+                db.child("user_statistics").child(postingData.userID).runTransaction(object : Transaction.Handler {
+                    override fun doTransaction(currentData: MutableData): Transaction.Result {
+                        val userStats = currentData.getValue(UserStatistics::class.java)
+                        if (userStats != null) {
+                            val updatedTotalRating = userStats.totalRating + rating
+                            val updatedNumRatings = userStats.numRatings + 1
+                            currentData.child("totalRating").value = updatedTotalRating
+                            currentData.child("numRatings").value = updatedNumRatings
+                        } else {
+                            // User statistics don't exist, create new entry
+                            val newUserStats = UserStatistics(totalRating = rating, numRatings = 1)
+                            currentData.value = newUserStats
+                        }
+                        return Transaction.success(currentData)
+                    }
+
+                    override fun onComplete(
+                        error: DatabaseError?,
+                        committed: Boolean,
+                        currentData: DataSnapshot?
+                    ) {
+                        //doesn't need to do anything
+                    }
+                })
             }
     }
 
@@ -196,7 +231,8 @@ class FirebaseAPI {
                                 description = postData.description,
                                 claimed = postData.claimed,
                                 photoUrl = postData.photoUrl,
-                                claimedBy = postData.claimedBy
+                                claimedBy = postData.claimedBy,
+                                rating = postData.rating
                             )
                             postingDataList.add(postingData)
                         }

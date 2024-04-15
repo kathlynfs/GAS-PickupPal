@@ -173,7 +173,11 @@ class ProfileFragment : Fragment() {
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = userStatistics?.averageRating?.toString() ?: "0.0",
+                            text = if ((userStatistics?.numRatings ?: 0)> 0) {
+                                String.format("%.2f", userStatistics?.totalRating?.toDouble()?.div(userStatistics?.numRatings ?: 1) ?: 0.0)
+                            } else {
+                                "0.00"
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.Black
                         )

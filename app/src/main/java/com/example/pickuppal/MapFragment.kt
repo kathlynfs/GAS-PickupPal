@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -60,6 +61,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -371,6 +373,7 @@ class MapFragment : Fragment() {
         val shouldMakeImageFullScreen = remember { mutableStateOf(false)}
         val isClaimed = remember { mutableStateOf(postingData.claimed) }
         val isOwnItem = postingData.userID == user.userId
+        val rating = remember { mutableIntStateOf(0) }
 
         Box(
             modifier = Modifier
@@ -380,7 +383,7 @@ class MapFragment : Fragment() {
             Card(
                 modifier = Modifier
                     .align(BottomCenter)
-                    .height(400.dp)
+                    .height(500.dp)
                     .fillMaxWidth()
                     .clickable(enabled = false) {},
                 shape = RectangleShape,
@@ -452,6 +455,45 @@ class MapFragment : Fragment() {
                                 else -> "Claim"
                             }
                         )
+                    }
+                    if (postingData.claimedBy == user.userId) {
+                        if (postingData.rating == 0) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(top = 16.dp)
+                            ) {
+                                Text(
+                                    text = "Rate the item:",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                repeat(5) { index ->
+                                    Icon(
+                                        imageVector = if (rating.value >= index + 1) Icons.Filled.Star else Icons.Outlined.Star,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clickable {
+                                                rating.value = index + 1
+                                            }
+                                    )
+                                }
+                            }
+                            Button(
+                                onClick = {
+                                    firebaseAPI.submitRating(postingData, rating.value)
+                                },
+                                modifier = Modifier.padding(top = 8.dp)
+                            ) {
+                                Text(text = "Submit Rating")
+                            }
+                        } else {
+                            Text(
+                                text = "You have already submitted a rating for this item.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(top = 16.dp)
+                            )
+                        }
                     }
                 }
             }

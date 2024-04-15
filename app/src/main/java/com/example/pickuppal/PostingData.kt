@@ -13,9 +13,10 @@ data class PostingData(
     val description: String,
     val claimed: Boolean,
     val claimedBy: String,
-    var photoUrl: String
+    var photoUrl: String,
+    var rating: Int,
 ) {
-    constructor() : this("", "", "", "", 0.0, 0.0,"", "",false, "", "")
+    constructor() : this("", "", "", "", 0.0, 0.0,"", "",false, "", "", 0)
 
     fun toMap(): Map<String, Any> {
         return mapOf(
@@ -27,7 +28,9 @@ data class PostingData(
             "reverseGeocodedAddress" to reverseGeocodedAddress,
             "description" to description,
             "claimed" to claimed,
-            "photoUrl" to photoUrl
+            "photoUrl" to photoUrl,
+            "claimedBy" to claimedBy,
+            "rating" to rating,
         )
     }
 }
