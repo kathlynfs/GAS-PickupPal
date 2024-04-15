@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -59,6 +60,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -101,6 +104,11 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 class MapFragment : Fragment() {
     private var currentLocation: Location? = null
@@ -109,41 +117,49 @@ class MapFragment : Fragment() {
     private var postingDataList = mutableListOf<PostingData>()
     private val firebaseAPI = FirebaseAPI()
 
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View
     {
         val args = MapFragmentArgs.fromBundle(requireArguments())
-
         val profilePicture = args.user.profilePictureUrl
-
         db = FirebaseAPI().getDB()
 
-        db.child("posting_data").addChildEventListener(object: ChildEventListener {
-            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                val postID = snapshot.key
-                var data = snapshot.getValue(PostingData::class.java)
-                data?.let {
-                    it.postID = postID ?: ""
-                    Log.d(ContentValues.TAG, "snapshot.value = $it")
-                    postingDataList.add(it)
+        determineCurrentLocation().addOnSuccessListener { location ->
+            currentLocation = location
+            val userLocation = LatLng(location.latitude, location.longitude)
+
+            db.child("posting_data").addChildEventListener(object : ChildEventListener {
+                override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                    val postID = snapshot.key
+                    val data = snapshot.getValue(PostingData::class.java)
+                    data?.let {
+                        it.postID = postID ?: ""
+
+                        // Used ChatGPT for calculateDistance
+                        val distance = calculateDistance(userLocation, LatLng(it.lat, it.lng))
+
+                        // if longer than 10 km (max supported)
+                        if (distance <= 10.0) {
+                            Log.d(ContentValues.TAG, "snapshot.value = $it")
+                            postingDataList.add(it)
+                        }
+                    }
                 }
-            }
+                override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                }
 
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-            }
+                override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
+                }
 
-            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
-            }
+                override fun onChildRemoved(snapshot: DataSnapshot) {
+                    var data = snapshot.getValue(PostingData::class.java)
+                    Log.d(ContentValues.TAG, "snapshot.value = $data ")
+                    postingDataList.remove(data)
+                }
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
+        }
 
-            override fun onChildRemoved(snapshot: DataSnapshot) {
-                var data = snapshot.getValue(PostingData::class.java)
-                Log.d(ContentValues.TAG, "snapshot.value = $data ")
-                postingDataList.remove(data)
-            }
-            override fun onCancelled(error: DatabaseError) {
-            }
-
-        })
 
         return ComposeView(requireContext()).apply {
             val navController = NavHostFragment.findNavController(this@MapFragment)
@@ -338,7 +354,7 @@ class MapFragment : Fragment() {
         }
 
         if (isSettingsMenuOpen.value) {
-            SearchSettingsMenu(onDismissRequest = { isSettingsMenuOpen.value = false })
+            SearchSettingsMenu(filteredPostingDataList, onDismissRequest = { isSettingsMenuOpen.value = false })
         }
 
         BackHandler(enabled = isMarkerClickPostingDataOpen.value) {
@@ -357,6 +373,7 @@ class MapFragment : Fragment() {
         val shouldMakeImageFullScreen = remember { mutableStateOf(false)}
         val isClaimed = remember { mutableStateOf(postingData.claimed) }
         val isOwnItem = postingData.userID == user.userId
+        val rating = remember { mutableIntStateOf(0) }
 
         Box(
             modifier = Modifier
@@ -366,7 +383,7 @@ class MapFragment : Fragment() {
             Card(
                 modifier = Modifier
                     .align(BottomCenter)
-                    .height(400.dp)
+                    .height(500.dp)
                     .fillMaxWidth()
                     .clickable(enabled = false) {},
                 shape = RectangleShape,
@@ -439,6 +456,45 @@ class MapFragment : Fragment() {
                             }
                         )
                     }
+                    if (postingData.claimedBy == user.userId) {
+                        if (postingData.rating == 0) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(top = 16.dp)
+                            ) {
+                                Text(
+                                    text = "Rate the item:",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                repeat(5) { index ->
+                                    Icon(
+                                        imageVector = if (rating.value >= index + 1) Icons.Filled.Star else Icons.Outlined.Star,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clickable {
+                                                rating.value = index + 1
+                                            }
+                                    )
+                                }
+                            }
+                            Button(
+                                onClick = {
+                                    firebaseAPI.submitRating(postingData, rating.value)
+                                },
+                                modifier = Modifier.padding(top = 8.dp)
+                            ) {
+                                Text(text = "Submit Rating")
+                            }
+                        } else {
+                            Text(
+                                text = "You have already submitted a rating for this item.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(top = 16.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -482,7 +538,7 @@ class MapFragment : Fragment() {
     }
 
     @Composable
-    fun SearchSettingsMenu(onDismissRequest: () -> Unit) {
+    fun SearchSettingsMenu(filteredPostingDataList: MutableState<MutableList<PostingData>>, onDismissRequest: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -513,22 +569,15 @@ class MapFragment : Fragment() {
 
                     SettingsSlider(
                         label = "Distance",
-                        value = remember { mutableStateOf(2.5f) },
-                        range = 0f..5f,
-                        steps = 10,
-                        onValueChange = { /* Handle distance value change */ }
-                    )
-
-                    SettingsTextInput(
-                        label = "Include Name",
-                        value = remember { mutableStateOf("") },
-                        onValueChange = { /* Handle include name value change */ }
-                    )
-
-                    SettingsTextInput(
-                        label = "Exclude Name",
-                        value = remember { mutableStateOf("") },
-                        onValueChange = { /* Handle exclude name value change */ }
+                        value = remember { mutableFloatStateOf(2.5f) },
+                        range = 1f..10f,
+                        steps = 18,
+                        onValueChange = { distanceVal ->
+                            filteredPostingDataList.value = postingDataList.filter { data ->
+                                Log.d("TAG", currentLocation.toString())
+                                calculateDistance(LatLng(data.lat, data.lng), LatLng(currentLocation!!.latitude, currentLocation!!.longitude)) <= distanceVal
+                            }.toMutableList()
+                        }
                     )
 
                     SettingsStarRating(
@@ -564,33 +613,53 @@ class MapFragment : Fragment() {
                 steps = steps,
                 modifier = Modifier.padding(top = 8.dp)
             )
-        }
-    }
-
-    @Composable
-    fun SettingsTextInput(
-        label: String,
-        value: MutableState<String>,
-        onValueChange: (String) -> Unit
-    ) {
-        Column(modifier = Modifier.padding(vertical = 8.dp)) {
             Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            OutlinedTextField(
-                value = value.value,
-                onValueChange = {
-                    value.value = it
-                    onValueChange(it)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
+                text = "${String.format("%.1f", value.value)} miles",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.align(Alignment.End)
             )
         }
     }
 
+//    @Composable
+//    fun SettingsTextInput(
+//        label: String,
+//        value: MutableState<String>,
+//        onValueChange: (String) -> Unit
+//    ) {
+//        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+//            Text(
+//                text = label,
+//                style = MaterialTheme.typography.bodyLarge
+//            )
+//            OutlinedTextField(
+//                value = value.value,
+//                onValueChange = {
+//                    value.value = it
+//                    onValueChange(it)
+//                },
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(top = 8.dp)
+//            )
+//        }
+//    }
+
+    private fun calculateDistance(location1: LatLng, location2: LatLng): Double {
+        val earthRadius = 6371.0 // in kilometers
+        val lat1 = Math.toRadians(location1.latitude)
+        val lon1 = Math.toRadians(location1.longitude)
+        val lat2 = Math.toRadians(location2.latitude)
+        val lon2 = Math.toRadians(location2.longitude)
+
+        val dLat = lat2 - lat1
+        val dLon = lon2 - lon1
+
+        val a = sin(dLat / 2).pow(2) + cos(lat1) * cos(lat2) * sin(dLon / 2).pow(2)
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+        return earthRadius * c * 0.621371
+    }
     @Composable
     fun SettingsStarRating(
         label: String,

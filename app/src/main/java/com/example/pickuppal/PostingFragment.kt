@@ -456,6 +456,7 @@ class PostingFragment : Fragment() {
                                             claimed = false,
                                             photoUrl = imageUrl,
                                             claimedBy = "",
+                                            rating = 0,
                                         )
                                         firebaseAPI.uploadPostingData(data, user)
                                         navController.popBackStack()
