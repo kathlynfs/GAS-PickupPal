@@ -2,7 +2,6 @@ package com.example.pickuppal
 
 import FirebaseAPI
 import android.content.ContentValues
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
@@ -31,6 +30,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -57,20 +57,23 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import java.io.File
-import kotlin.math.min
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
 import java.util.UUID
+import coil.request.ImageRequest
+
 
 
 class PostingFragment : Fragment() {
     private val args: PostingFragmentArgs by navArgs()
-    private var photoUri: Uri? = null
+    private val mutablePhotoUri: MutableLiveData<Uri?> = MutableLiveData(null)
+    private var photoUri: LiveData<Uri?> = mutablePhotoUri
     private var photoName: String? = null
     private var photoFile: File? = null
 
@@ -97,14 +100,14 @@ class PostingFragment : Fragment() {
         ActivityResultContracts.TakePicture()
     ) { didTakePhoto ->
         if (didTakePhoto && photoName != null) {
-            photoUri = Uri.fromFile(File(requireContext().filesDir, photoName!!))
+            mutablePhotoUri.value = Uri.fromFile(File(requireContext().filesDir, photoName!!))
             Log.d("TakePhotoCallback", "photoUri: $photoUri")
         } else {
             Toast.makeText(requireContext(), "Photo capture failed", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun launchTakePicture(updatePreviewImage: (Bitmap?) -> Unit) {
+    private fun launchTakePicture() {
         val timestamp = System.currentTimeMillis()
         val name = "IMG_${timestamp}.jpeg"
         photoName = name
@@ -117,9 +120,7 @@ class PostingFragment : Fragment() {
         )
         try {
             takePhoto.launch(photoUri)
-            val bitmap = BitmapFactory.decodeStream(context?.contentResolver?.openInputStream(photoUri))
             Log.d("launchTakePicture", "Bitmap decoded")
-            updatePreviewImage(bitmap)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -135,16 +136,12 @@ class PostingFragment : Fragment() {
         val titleState = remember { mutableStateOf(TextFieldValue()) }
         val locationState = remember { mutableStateOf(TextFieldValue()) }
         val descriptionState = remember { mutableStateOf(TextFieldValue()) }
-        val previewImage = remember { mutableStateOf<Bitmap?>(null) }
         val navController = findNavController()
         val repository = GooglePlacesRepository(GooglePlacesAPI.create())
         val factory = GooglePlacesViewModelFactory(repository)
         val googlePlacesViewModel: GooglePlacesViewModel = viewModel(factory = factory)
         val predictions by googlePlacesViewModel.predictions.observeAsState()
-
-        val updatePreviewImage: (Bitmap?) -> Unit = { newImage ->
-            previewImage.value = newImage
-        }
+        val previewImageUri : Uri? by photoUri.observeAsState()
 
         Box(
             modifier = Modifier
@@ -217,9 +214,9 @@ class PostingFragment : Fragment() {
                 )
 
                 PictureButton(
-                    onClick = { launchTakePicture(updatePreviewImage) },
+                    onClick = { launchTakePicture() },
                     modifier = Modifier.padding(16.dp),
-                    previewImage = previewImage.value
+                    imageUri = previewImageUri
                 )
 
                 LocationTextField(
@@ -242,7 +239,8 @@ class PostingFragment : Fragment() {
                                     text = prediction.description,
                                     modifier = Modifier
                                         .clickable {
-                                            locationState.value = TextFieldValue(prediction.description)
+                                            locationState.value =
+                                                TextFieldValue(prediction.description)
                                         }
                                         .fillMaxWidth()
                                         .padding(8.dp)
@@ -288,8 +286,7 @@ class PostingFragment : Fragment() {
         value: TextFieldValue,
         onValueChange: (TextFieldValue) -> Unit,
         modifier: Modifier = Modifier,
-        placeholderText: String? = null,
-        visualTransformation: VisualTransformation = VisualTransformation.None
+        placeholderText: String? = null
     ) {
         TextField(
             value = value,
@@ -312,12 +309,12 @@ class PostingFragment : Fragment() {
                 unfocusedIndicatorColor = Color.Transparent,
                 disabledIndicatorColor = Color.Transparent
 
-            ),
-            visualTransformation = visualTransformation
+            )
         )
     }
 
     private fun onPostClicked(title : String, location : String, user : UserData, description : String, navController : NavController) {
+        val photoUri = mutablePhotoUri.value
         if (hasRequiredInputs(title, location, photoUri)) {
             val firebaseAPI = FirebaseAPI()
             photoUri?.let { uri ->
@@ -394,32 +391,8 @@ class PostingFragment : Fragment() {
         }
     }
 
-
-
     private fun hasRequiredInputs(title : String, location : String, uri : Uri?): Boolean {
         return title.isNotBlank() && location.isNotBlank() && uri != null
-    }
-
-    fun getScaledBitmap(path: String, destWidth: Int, destHeight: Int): Bitmap? {
-        val options = BitmapFactory.Options()
-        options.inJustDecodeBounds = true
-        BitmapFactory.decodeFile(path, options)
-
-        val srcWidth = options.outWidth.toFloat()
-        val srcHeight = options.outHeight.toFloat()
-
-        val sampleSize = if (srcHeight <= destHeight && srcWidth <= destWidth) {
-            1
-        } else {
-            val heightScale = srcHeight / destHeight
-            val widthScale = srcWidth / destWidth
-
-            min(heightScale, widthScale).toInt()
-        }
-
-        return BitmapFactory.decodeFile(path, BitmapFactory.Options().apply {
-            inSampleSize = sampleSize
-        })
     }
 
     @Composable
@@ -427,8 +400,7 @@ class PostingFragment : Fragment() {
         value: TextFieldValue,
         onValueChange: (TextFieldValue) -> Unit,
         modifier: Modifier = Modifier,
-        placeholderText: String? = null,
-        visualTransformation: VisualTransformation = VisualTransformation.None
+        placeholderText: String? = null
     ) {
         Column {
             Row(modifier = Modifier.fillMaxWidth()) {
@@ -444,8 +416,7 @@ class PostingFragment : Fragment() {
                 onValueChange = onValueChange,
                 modifier = modifier
                     .fillMaxWidth(),
-                placeholderText = placeholderText,
-                visualTransformation = visualTransformation
+                placeholderText = placeholderText
             )
             Box(
                 modifier = Modifier
@@ -459,20 +430,23 @@ class PostingFragment : Fragment() {
     @Composable
     fun PictureButton(
         onClick: () -> Unit,
-        previewImage: Bitmap?,
+        imageUri: Uri?,
         modifier: Modifier = Modifier
     ) {
-        val currentPreviewImage = remember { mutableStateOf(previewImage) }
 
         Box(
             modifier = modifier
-                .size(200.dp)
+                .fillMaxWidth()
+                .aspectRatio(1f)
                 .background(Color.Transparent)
                 .clickable { onClick() }
         ) {
-            if (currentPreviewImage.value != null) {
+            if (imageUri != null) {
+                val request = ImageRequest.Builder(requireContext())
+                    .data(imageUri)
+                    .build()
                 Image(
-                    bitmap = currentPreviewImage.value!!.asImageBitmap(),
+                    painter = rememberAsyncImagePainter(request),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -481,14 +455,14 @@ class PostingFragment : Fragment() {
                 Icon(
                     painter = painterResource(id = R.drawable.add_a_photo),
                     contentDescription = "Add Photo",
-                    modifier = Modifier.align(Alignment.Center).size(48.dp),
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(48.dp),
                     tint = Color.Gray
                 )
             }
         }
     }
-
-
 
 
 }
