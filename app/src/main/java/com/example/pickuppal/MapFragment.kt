@@ -135,13 +135,13 @@ class MapFragment : Fragment() {
                         it.postID = postID ?: ""
 
                         // Used ChatGPT for calculateDistance
-                        val distance = calculateDistance(userLocation, LatLng(it.lat, it.lng))
+                        //val distance = calculateDistance(userLocation, LatLng(it.lat, it.lng))
 
                         // if longer than 10 km (max supported)
-                        if (distance <= 10.0) {
-                            Log.d(ContentValues.TAG, "snapshot.value = $it")
-                            postingDataList.add(it)
-                        }
+                        //if (distance <= 10.0) {
+                        //    Log.d(ContentValues.TAG, "snapshot.value = $it")
+                        postingDataList.add(it)
+                        //}
                     }
                 }
                 override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
