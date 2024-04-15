@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
@@ -35,13 +36,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
@@ -59,8 +62,14 @@ import kotlinx.coroutines.launch
 import java.io.File
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.navigation.NavController
@@ -171,33 +180,6 @@ class PostingFragment : Fragment() {
                 }
             }
 
-            Row(
-                modifier = Modifier
-                    .padding(top = 56.dp, bottom = 16.dp)
-                    .align(Alignment.BottomCenter),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Button(
-                    onClick = {
-                        onPostClicked(
-                            titleState.value.text,
-                            locationState.value.text,
-                            user,
-                            descriptionState.value.text,
-                            navController
-                        )
-                    },
-                    modifier = Modifier
-                        .padding(bottom = 16.dp)
-                        .wrapContentWidth(align = Alignment.CenterHorizontally)
-                        .height(IntrinsicSize.Min)
-                        .padding(horizontal = 16.dp),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Post")
-                }
-            }
-
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -205,9 +187,9 @@ class PostingFragment : Fragment() {
                     .padding(top = 56.dp)
                     .padding(bottom = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                PostingTextField(
+                TitleTextField(
                     value = titleState.value,
                     onValueChange = { titleState.value = it },
                     placeholderText = "Add a title"
@@ -215,7 +197,7 @@ class PostingFragment : Fragment() {
 
                 PictureButton(
                     onClick = { launchTakePicture() },
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(start = 16.dp, bottom = 16.dp, top = 0.dp, end = 16.dp),
                     imageUri = previewImageUri
                 )
 
@@ -231,20 +213,36 @@ class PostingFragment : Fragment() {
 
                 when (val resource = predictions) {
                     is Resource.Success -> {
-                        LazyColumn(
-                            modifier = Modifier.heightIn(max = 200.dp)
+                        LazyRow(
+
                         ) {
                             itemsIndexed(resource.data?.predictions ?: emptyList()) { _, prediction ->
-                                Text(
-                                    text = prediction.description,
+                                Surface(
                                     modifier = Modifier
+                                        .padding(8.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .border(
+                                            1.dp,
+                                            Color(0xFF6200EE),
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
                                         .clickable {
                                             locationState.value =
                                                 TextFieldValue(prediction.description)
-                                        }
-                                        .fillMaxWidth()
-                                        .padding(8.dp)
-                                )
+                                        },
+                                    color = Color.Transparent
+                                ) {
+                                    Text(
+                                        text = prediction.description,
+                                        modifier = Modifier
+                                            .widthIn(max = 200.dp)
+                                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                                        style = TextStyle(fontWeight = FontWeight.Bold),
+                                        color = Color.DarkGray,
+                                        overflow = TextOverflow.Ellipsis,
+                                        maxLines = 1
+                                    )
+                                }
                             }
                         }
                     }
@@ -264,18 +262,80 @@ class PostingFragment : Fragment() {
                     }
                     else -> {
                         Text(
-                            text = "No location suggestions available",
-                            modifier = Modifier.padding(8.dp)
+                            text = "Enter a location for suggestions",
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .align(Alignment.Start),
+                            color = Color.Gray
                         )
                     }
                 }
 
-                PostingTextField(
+                DescriptionTextField(
                     value = descriptionState.value,
                     onValueChange = { descriptionState.value = it },
-                    placeholderText = "Add a Description"
+                    placeholderText = "Add a Description",
+                    modifier =  Modifier.verticalScroll(rememberScrollState())
                 )
+
+                Button(
+                    onClick = {
+                        onPostClicked(
+                            titleState.value.text,
+                            locationState.value.text,
+                            user,
+                            descriptionState.value.text,
+                            navController
+                        )
+                    },
+                    modifier = Modifier
+                        .padding(bottom = 16.dp)
+                        .wrapContentWidth(align = Alignment.CenterHorizontally)
+                        .height(IntrinsicSize.Min)
+                        .padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Post")
+                }
+
             }
+        }
+    }
+
+    @Composable
+    fun DescriptionTextField(
+        value: TextFieldValue,
+        onValueChange: (TextFieldValue) -> Unit,
+        modifier: Modifier = Modifier,
+        placeholderText: String? = null
+    ) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(150.dp)
+                .background(Color.Transparent)
+        ) {
+            TextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()), // Make it scrollable
+                placeholder = {
+                    if (placeholderText != null) {
+                        Text(placeholderText, color = Color.Gray)
+                    }
+                },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    disabledContainerColor = Color.Transparent,
+                    cursorColor = Color.Black,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
+                )
+            )
         }
     }
 
@@ -304,12 +364,50 @@ class PostingFragment : Fragment() {
                 unfocusedContainerColor =  Color.Transparent,
                 disabledContainerColor =  Color.Transparent,
                 cursorColor = Color.Black,
-                // underline
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 disabledIndicatorColor = Color.Transparent
 
-            )
+            ),
+            singleLine = true
+        )
+    }
+
+    @Composable
+    fun TitleTextField(
+        value: TextFieldValue,
+        onValueChange: (TextFieldValue) -> Unit,
+        modifier: Modifier = Modifier,
+        placeholderText: String? = null,
+        size : TextUnit = 24.sp
+    ) {
+        TextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(bottom = 0.dp)
+                .background(Color.Transparent),
+            textStyle = TextStyle(fontSize = size),
+            placeholder = {
+                if (placeholderText != null) {
+                    Text(
+                        placeholderText,
+                        color = Color.Gray,
+                        style = TextStyle(fontSize = size))
+                }
+            },
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor =  Color.Transparent,
+                unfocusedContainerColor =  Color.Transparent,
+                disabledContainerColor =  Color.Transparent,
+                cursorColor = Color.Black,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent
+
+            ),
+            singleLine = true
         )
     }
 
