@@ -3,7 +3,7 @@ package com.example.pickuppal
 import java.util.UUID
 
 data class PostingData(
-    val postID: String,
+    var postID: String,
     val userID: String,
     val title: String,
     val location: String,
@@ -12,9 +12,10 @@ data class PostingData(
     val reverseGeocodedAddress: String,
     val description: String,
     val claimed: Boolean,
+    val claimedBy: String,
     var photoUrl: String
 ) {
-    constructor() : this("", "", "", "", 0.0, 0.0,"", "",false, "")
+    constructor() : this("", "", "", "", 0.0, 0.0,"", "",false, "", "")
 
     fun toMap(): Map<String, Any> {
         return mapOf(

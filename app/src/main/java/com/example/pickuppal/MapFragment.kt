@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,12 +29,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Divider
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
@@ -104,6 +107,8 @@ class MapFragment : Fragment() {
     private lateinit var currentLocationDeterminer: CurrentLocationDeterminer
     private lateinit var db: DatabaseReference
     private var postingDataList = mutableListOf<PostingData>()
+    private val firebaseAPI = FirebaseAPI()
+
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View
     {
@@ -115,17 +120,19 @@ class MapFragment : Fragment() {
 
         db.child("posting_data").addChildEventListener(object: ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val postID = snapshot.key
                 var data = snapshot.getValue(PostingData::class.java)
-                Log.d(ContentValues.TAG, "snapshot.value = $data ")
-                postingDataList.add(data!!)
+                data?.let {
+                    it.postID = postID ?: ""
+                    Log.d(ContentValues.TAG, "snapshot.value = $it")
+                    postingDataList.add(it)
+                }
             }
 
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                TODO("Not yet implemented")
             }
 
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
-                TODO("Not yet implemented")
             }
 
             override fun onChildRemoved(snapshot: DataSnapshot) {
@@ -134,7 +141,6 @@ class MapFragment : Fragment() {
                 postingDataList.remove(data)
             }
             override fun onCancelled(error: DatabaseError) {
-                TODO("Not yet implemented")
             }
 
         })
@@ -154,11 +160,11 @@ class MapFragment : Fragment() {
 
         val args = MapFragmentArgs.fromBundle(requireArguments())
         val user = args.user
-        Toast.makeText(
-            requireContext(),
-            user.userId,
-            Toast.LENGTH_SHORT
-        ).show()
+//        Toast.makeText(
+//            requireContext(),
+//            user.userId,
+//            Toast.LENGTH_SHORT
+//        ).show()
     }
 
     override fun onAttach(context: Context) {
@@ -187,6 +193,7 @@ class MapFragment : Fragment() {
         val isMarkerClickPostingDataOpen = remember{ mutableStateOf(false)}
         val postingData = remember{mutableStateOf<PostingData?>(null)}
         var cameraPositionState = rememberCameraPositionState()
+        val filteredPostingDataList = remember { mutableStateOf(postingDataList) }
 
         LaunchedEffect(Unit)
         {
@@ -203,13 +210,12 @@ class MapFragment : Fragment() {
                 position = CameraPosition.fromLatLngZoom(startingLocation, 15f)
             }
         }
-
         Box(modifier = Modifier.fillMaxSize()) {
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = cameraPositionState,
                 content = {
-                    postingDataList.forEach{ data ->
+                    filteredPostingDataList.value.forEach{ data ->
                         Marker(
                             state = MarkerState(LatLng(data.lat, data.lng)),
                             onClick = {
@@ -249,8 +255,24 @@ class MapFragment : Fragment() {
 
             DockedSearchBar(
                 query = searchQuery.value,
-                onQueryChange = { searchQuery.value = it },
-                onSearch = { /* Handle search */ },
+                onQueryChange = {  query ->
+                    searchQuery.value = query
+                    filteredPostingDataList.value = if (query.isNotBlank()) {
+                        postingDataList.filter { data ->
+                            data.title.contains(query, ignoreCase = true) ||
+                            data.description.contains(query, ignoreCase = true) ||
+                            data.reverseGeocodedAddress.contains(query, ignoreCase = true)
+                        }.toMutableList()
+                    } else {
+                        postingDataList
+                    }
+                },
+                onSearch = {
+                    isSearchActive.value = false
+                    filteredPostingDataList.value = postingDataList.filter { data ->
+                        data.title.equals(searchQuery.value, ignoreCase = true)
+                    }.toMutableList()
+                },
                 active = isSearchActive.value,
                 onActiveChange = { isSearchActive.value = it },
                 placeholder = { Text("Search") },
@@ -264,6 +286,7 @@ class MapFragment : Fragment() {
                             if (isSearchActive.value) {
                                 isSearchActive.value = false
                                 searchQuery.value = ""
+                                filteredPostingDataList.value = postingDataList
                             }
                         }
                     ) {
@@ -291,11 +314,18 @@ class MapFragment : Fragment() {
                 },
                 content = {
                     LazyColumn {
-                        // Add search results or suggestions here
-                        items(5) { index ->
+                        this.items(filteredPostingDataList.value) { data ->
                             ListItem(
-                                headlineContent = { Text("Search Result $index") },
-                                modifier = Modifier.clickable { /* Handle item click */ }
+                                headlineContent = { Text(data.title) },
+                                supportingContent = { Text(data.description) },
+                                modifier = Modifier.clickable {
+                                    searchQuery.value = data.title
+                                    isSearchActive.value = false
+                                    postingData.value = data
+                                    filteredPostingDataList.value = postingDataList.filter { item ->
+                                        item.title.equals(data.title, ignoreCase = true)
+                                    }.toMutableList()
+                                }
                             )
                         }
                     }
@@ -316,15 +346,18 @@ class MapFragment : Fragment() {
         }
 
         if (isMarkerClickPostingDataOpen.value) {
-            MarkerClickPostingData(postingData.value!!, onDismissRequest = { isMarkerClickPostingDataOpen.value = false })
+            MarkerClickPostingData(postingData.value!!, user, onDismissRequest = { isMarkerClickPostingDataOpen.value = false })
         }
     }
 
 
     @Composable
-    fun MarkerClickPostingData(postingData: PostingData, onDismissRequest: () -> Unit) {
+    fun MarkerClickPostingData(postingData: PostingData, user: UserData, onDismissRequest: () -> Unit) {
         val shouldTrackRoute = remember { mutableStateOf(false) }
         val shouldMakeImageFullScreen = remember { mutableStateOf(false)}
+        val isClaimed = remember { mutableStateOf(postingData.claimed) }
+        val isOwnItem = postingData.userID == user.userId
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -352,7 +385,7 @@ class MapFragment : Fragment() {
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     Text(
-                        text = postingData.reverseGeocodedAddress,
+                        text = postingData.location,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
@@ -366,7 +399,7 @@ class MapFragment : Fragment() {
                         modifier = Modifier
                             .align(Alignment.End),
 
-                    ) {
+                        ) {
                         // want to add ability to click on image and have it show up full screen
                         AsyncImage(
                             model = postingData.photoUrl,
@@ -383,6 +416,27 @@ class MapFragment : Fragment() {
                             text = { Text(text = "Directions") },
                             modifier = Modifier
                                 .align(Alignment.Bottom)
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            if (!isOwnItem) {
+                                firebaseAPI.claimItem(postingData, user)
+                                isClaimed.value = true
+                            }
+                        },
+                        modifier = Modifier.defaultMinSize(minWidth = 56.dp, minHeight = 56.dp),
+                        enabled = !isClaimed.value && !isOwnItem,
+                        shape = CircleShape
+
+                    ){
+                        Text(
+                            text = when {
+                                isOwnItem -> "You can't claim your own item!"
+                                isClaimed.value -> "Already Claimed"
+                                else -> "Claim"
+                            }
                         )
                     }
                 }
@@ -412,17 +466,17 @@ class MapFragment : Fragment() {
                 shape = RectangleShape,
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface)) {
-                    ExtendedFloatingActionButton(
-                        onClick = { onDismissRequest()},
-                        modifier = Modifier.align(Alignment.End)
-                    )
-                    {
-                        Text(text = "Done")
-                    }
-                    AsyncImage(
-                        model = postingData.photoUrl,
-                        contentDescription = postingData.description,
-                    )
+                ExtendedFloatingActionButton(
+                    onClick = { onDismissRequest()},
+                    modifier = Modifier.align(Alignment.End)
+                )
+                {
+                    Text(text = "Done")
+                }
+                AsyncImage(
+                    model = postingData.photoUrl,
+                    contentDescription = postingData.description,
+                )
             }
         }
     }
@@ -457,7 +511,6 @@ class MapFragment : Fragment() {
 
                     Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-                    // Distance filter with a slider
                     SettingsSlider(
                         label = "Distance",
                         value = remember { mutableStateOf(2.5f) },
@@ -466,7 +519,6 @@ class MapFragment : Fragment() {
                         onValueChange = { /* Handle distance value change */ }
                     )
 
-                    // Include and exclude name filters with text inputs
                     SettingsTextInput(
                         label = "Include Name",
                         value = remember { mutableStateOf("") },
@@ -479,7 +531,6 @@ class MapFragment : Fragment() {
                         onValueChange = { /* Handle exclude name value change */ }
                     )
 
-                    // Star search slider with star rating
                     SettingsStarRating(
                         label = "Minimum Star Rating",
                         rating = remember { mutableStateOf(3) },

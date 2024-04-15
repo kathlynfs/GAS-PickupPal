@@ -72,6 +72,29 @@ class FirebaseAPI {
             }
     }
 
+    fun claimItem(data: PostingData, claimingUser: UserData) {
+        val updatedPostingData = data.copy(
+            claimed = true,
+            claimedBy = claimingUser.userId
+        )
+        Log.d("TAG", data.postID)
+        db.child("posting_data").child(data.postID).updateChildren(updatedPostingData.toMap())
+            .addOnSuccessListener {
+                getUserStatistics(claimingUser, object : UserStatisticsCallback {
+                    override fun onUserStatisticsReceived(userStatistics: UserStatistics) {
+                        val updatedStatistics = userStatistics.copy(
+                            numItemsClaimed = userStatistics.numItemsPosted + 1
+                        )
+                        updateUserStatistics(updatedStatistics)
+                    }
+
+                    override fun onUserStatisticsError(e: Exception) {
+                        Log.e(TAG, "Error retrieving user statistics", e)
+                    }
+                })
+            }
+    }
+
     fun uploadImage(bitmap: Bitmap, imageName: String, callback: (String?) -> Unit) {
         val storage = Firebase.storage
         val storageRef = storage.reference
@@ -172,7 +195,8 @@ class FirebaseAPI {
                                 reverseGeocodedAddress = postData.reverseGeocodedAddress,
                                 description = postData.description,
                                 claimed = postData.claimed,
-                                photoUrl = postData.photoUrl
+                                photoUrl = postData.photoUrl,
+                                claimedBy = postData.claimedBy
                             )
                             postingDataList.add(postingData)
                         }
