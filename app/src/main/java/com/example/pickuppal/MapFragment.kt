@@ -346,16 +346,17 @@ class MapFragment : Fragment() {
         }
 
         if (isMarkerClickPostingDataOpen.value) {
-            MarkerClickPostingData(postingData.value!!, onDismissRequest = { isMarkerClickPostingDataOpen.value = false })
+            MarkerClickPostingData(postingData.value!!, user, onDismissRequest = { isMarkerClickPostingDataOpen.value = false })
         }
     }
 
 
     @Composable
-    fun MarkerClickPostingData(postingData: PostingData, onDismissRequest: () -> Unit) {
+    fun MarkerClickPostingData(postingData: PostingData, user: UserData, onDismissRequest: () -> Unit) {
         val shouldTrackRoute = remember { mutableStateOf(false) }
         val shouldMakeImageFullScreen = remember { mutableStateOf(false)}
         val isClaimed = remember { mutableStateOf(postingData.claimed) }
+        val isOwnItem = postingData.userID == user.userId
 
         Box(
             modifier = Modifier
@@ -384,7 +385,7 @@ class MapFragment : Fragment() {
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     Text(
-                        text = postingData.reverseGeocodedAddress,
+                        text = postingData.location,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
@@ -420,15 +421,23 @@ class MapFragment : Fragment() {
 
                     Button(
                         onClick = {
-                            firebaseAPI.claimItem(postingData)
-                            isClaimed.value = true
+                            if (!isOwnItem) {
+                                firebaseAPI.claimItem(postingData, user)
+                                isClaimed.value = true
+                            }
                         },
                         modifier = Modifier.defaultMinSize(minWidth = 56.dp, minHeight = 56.dp),
-                        enabled = !isClaimed.value,
+                        enabled = !isClaimed.value && !isOwnItem,
                         shape = CircleShape
 
                     ){
-                        Text(text = if (!isClaimed.value) "Claim" else "Already Claimed")
+                        Text(
+                            text = when {
+                                isOwnItem -> "You can't claim your own item!"
+                                isClaimed.value -> "Already Claimed"
+                                else -> "Claim"
+                            }
+                        )
                     }
                 }
             }

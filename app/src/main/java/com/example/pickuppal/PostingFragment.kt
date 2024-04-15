@@ -454,7 +454,8 @@ class PostingFragment : Fragment() {
                                             reverseGeocodedAddress = reverseGeocodedAddress,
                                             description = description,
                                             claimed = false,
-                                            photoUrl = imageUrl
+                                            photoUrl = imageUrl,
+                                            claimedBy = "",
                                         )
                                         firebaseAPI.uploadPostingData(data, user)
                                         navController.popBackStack()
