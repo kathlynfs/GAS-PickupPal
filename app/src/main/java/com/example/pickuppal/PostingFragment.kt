@@ -1,6 +1,7 @@
 package com.example.pickuppal
 
 import FirebaseAPI
+import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -20,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
@@ -35,12 +35,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -48,13 +52,20 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.core.content.FileProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
+import java.io.File
+import kotlin.math.min
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.core.content.FileProvider
 import androidx.navigation.NavController
-import java.io.File
-import kotlin.math.min
+import java.util.UUID
 
 
 class PostingFragment : Fragment() {
@@ -126,6 +137,11 @@ class PostingFragment : Fragment() {
         val descriptionState = remember { mutableStateOf(TextFieldValue()) }
         val previewImage = remember { mutableStateOf<Bitmap?>(null) }
         val navController = findNavController()
+        val repository = GooglePlacesRepository(GooglePlacesAPI.create())
+        val factory = GooglePlacesViewModelFactory(repository)
+        val googlePlacesViewModel: GooglePlacesViewModel = viewModel(factory = factory)
+        val predictions by googlePlacesViewModel.predictions.observeAsState()
+
         val updatePreviewImage: (Bitmap?) -> Unit = { newImage ->
             previewImage.value = newImage
         }
@@ -208,9 +224,53 @@ class PostingFragment : Fragment() {
 
                 LocationTextField(
                     value = locationState.value,
-                    onValueChange = { locationState.value = it },
+                    onValueChange = {
+                        locationState.value = it
+                        googlePlacesViewModel.getPredictions(it.text)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
                     placeholderText = "Add a Location"
                 )
+
+                when (val resource = predictions) {
+                    is Resource.Success -> {
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 200.dp)
+                        ) {
+                            itemsIndexed(resource.data?.predictions ?: emptyList()) { _, prediction ->
+                                Text(
+                                    text = prediction.description,
+                                    modifier = Modifier
+                                        .clickable {
+                                            locationState.value = TextFieldValue(prediction.description)
+                                        }
+                                        .fillMaxWidth()
+                                        .padding(8.dp)
+                                )
+                            }
+                        }
+                    }
+                    is Resource.Error -> {
+                        Text(
+                            text = "Error fetching location suggestions",
+                            color = Color.Red,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                    is Resource.Loading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .padding(8.dp)
+                        )
+                    }
+                    else -> {
+                        Text(
+                            text = "No location suggestions available",
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                }
 
                 PostingTextField(
                     value = descriptionState.value,
@@ -239,7 +299,7 @@ class PostingFragment : Fragment() {
                 .background(Color.Transparent),
             placeholder = {
                 if (placeholderText != null) {
-                    Text(placeholderText, color = Color.Gray)
+                   Text(placeholderText, color = Color.Gray)
                 }
             },
             colors = TextFieldDefaults.colors(
@@ -262,21 +322,68 @@ class PostingFragment : Fragment() {
             val firebaseAPI = FirebaseAPI()
             photoUri?.let { uri ->
                 val bitmap = BitmapFactory.decodeStream(context?.contentResolver?.openInputStream(uri))
+                val id = UUID.randomUUID().toString()
                 val name:String = photoName?: "defaultphotoname"
-                firebaseAPI.uploadImage(bitmap, name) { imageUrl ->
-                    if (imageUrl != null) {
-                        val data = PostingData (
-                            userID = user.userId,
-                            title = title,
-                            location = location,
-                            description = description,
-                            claimed = false,
-                            photoUrl = imageUrl
-                        )
-                        firebaseAPI.uploadPostingData(data, user)
-                        navController.popBackStack()
-                    } else {
-                        Toast.makeText(context, "Error. Please try again.", Toast.LENGTH_SHORT).show()
+
+                // geocoding address to lat + long
+                lifecycleScope.launch {
+                    try {
+                        val geocodeResp =
+                            GeocoderResultsRepository().fetchGeocoderResults(location)
+                        Log.d(ContentValues.TAG, "Response received: $geocodeResp")
+                        if (geocodeResp.results[0].geometry.location.lat != null) {
+                            // once lat and long have been retrieved by geocoding,
+                            // reverse geocode to get cleanly formatted address
+                            val lat = geocodeResp.results[0].geometry.location.lat.toDouble()
+                            val lng = geocodeResp.results[0].geometry.location.lng.toDouble()
+
+                            try {
+                                val reverseGeocodeResp =
+                                    ReverseGeocoderResultsRepository().fetchReverseGeocoderResults("$lat, $lng")
+                                Log.d(ContentValues.TAG, "reverse geocoding: $reverseGeocodeResp")
+                                val reverseGeocodedAddress = reverseGeocodeResp.results[0].address
+                                Log.d(ContentValues.TAG, "address: $reverseGeocodedAddress")
+
+                                Log.d(ContentValues.TAG, "Lat: $lat")
+                                Log.d(ContentValues.TAG, "Lat: $lng")
+
+                                firebaseAPI.uploadImage(bitmap, name) { imageUrl ->
+                                    if (imageUrl != null) {
+                                        val data = PostingData(
+                                            postID = id,
+                                            userID = user.userId,
+                                            title = title,
+                                            location = location,
+                                            lat = lat,
+                                            lng = lng,
+                                            reverseGeocodedAddress = reverseGeocodedAddress,
+                                            description = description,
+                                            claimed = false,
+                                            photoUrl = imageUrl
+                                        )
+                                        firebaseAPI.uploadPostingData(data, user)
+                                        navController.popBackStack()
+
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            "Error. Please try again.",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            }
+                            catch(ex: Exception)
+                            {
+                                Log.e(ContentValues.TAG, "Failed to fetch address", ex)
+                            }
+                        } else {
+                            Log.e(ContentValues.TAG, "Null lat")
+                            // do something
+                        }
+                    } catch (ex: Exception) {
+                        Log.e(ContentValues.TAG, "Failed to fetch LatLong", ex)
+                        // maybe show a toast
                     }
                 }
             }
