@@ -3,7 +3,7 @@ package com.example.pickuppal
 import java.util.UUID
 
 data class PostingData(
-    val postID: String,
+    var postID: String,
     val userID: String,
     val title: String,
     val location: String,

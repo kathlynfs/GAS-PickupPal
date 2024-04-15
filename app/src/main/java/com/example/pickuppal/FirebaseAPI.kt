@@ -72,6 +72,17 @@ class FirebaseAPI {
             }
     }
 
+    fun claimItem(data: PostingData) {
+        val updatedPostingData = data.copy(
+            claimed = true
+        )
+        Log.d("TAG", data.postID)
+        db.child("posting_data").child(data.postID).updateChildren(updatedPostingData.toMap())
+            .addOnSuccessListener {
+
+            }
+    }
+
     fun uploadImage(bitmap: Bitmap, imageName: String, callback: (String?) -> Unit) {
         val storage = Firebase.storage
         val storageRef = storage.reference

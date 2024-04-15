@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,6 +36,7 @@ import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
@@ -105,6 +107,8 @@ class MapFragment : Fragment() {
     private lateinit var currentLocationDeterminer: CurrentLocationDeterminer
     private lateinit var db: DatabaseReference
     private var postingDataList = mutableListOf<PostingData>()
+    private val firebaseAPI = FirebaseAPI()
+
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View
     {
@@ -116,17 +120,19 @@ class MapFragment : Fragment() {
 
         db.child("posting_data").addChildEventListener(object: ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val postID = snapshot.key
                 var data = snapshot.getValue(PostingData::class.java)
-                Log.d(ContentValues.TAG, "snapshot.value = $data ")
-                postingDataList.add(data!!)
+                data?.let {
+                    it.postID = postID ?: ""
+                    Log.d(ContentValues.TAG, "snapshot.value = $it")
+                    postingDataList.add(it)
+                }
             }
 
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                TODO("Not yet implemented")
             }
 
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
-                TODO("Not yet implemented")
             }
 
             override fun onChildRemoved(snapshot: DataSnapshot) {
@@ -135,7 +141,6 @@ class MapFragment : Fragment() {
                 postingDataList.remove(data)
             }
             override fun onCancelled(error: DatabaseError) {
-                TODO("Not yet implemented")
             }
 
         })
@@ -205,7 +210,6 @@ class MapFragment : Fragment() {
                 position = CameraPosition.fromLatLngZoom(startingLocation, 15f)
             }
         }
-
         Box(modifier = Modifier.fillMaxSize()) {
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
@@ -351,6 +355,8 @@ class MapFragment : Fragment() {
     fun MarkerClickPostingData(postingData: PostingData, onDismissRequest: () -> Unit) {
         val shouldTrackRoute = remember { mutableStateOf(false) }
         val shouldMakeImageFullScreen = remember { mutableStateOf(false)}
+        val isClaimed = remember { mutableStateOf(postingData.claimed) }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -410,6 +416,19 @@ class MapFragment : Fragment() {
                             modifier = Modifier
                                 .align(Alignment.Bottom)
                         )
+                    }
+
+                    Button(
+                        onClick = {
+                            firebaseAPI.claimItem(postingData)
+                            isClaimed.value = true
+                        },
+                        modifier = Modifier.defaultMinSize(minWidth = 56.dp, minHeight = 56.dp),
+                        enabled = !isClaimed.value,
+                        shape = CircleShape
+
+                    ){
+                        Text(text = if (!isClaimed.value) "Claim" else "Already Claimed")
                     }
                 }
             }
@@ -483,7 +502,6 @@ class MapFragment : Fragment() {
 
                     Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-                    // Distance filter with a slider
                     SettingsSlider(
                         label = "Distance",
                         value = remember { mutableStateOf(2.5f) },
@@ -492,7 +510,6 @@ class MapFragment : Fragment() {
                         onValueChange = { /* Handle distance value change */ }
                     )
 
-                    // Include and exclude name filters with text inputs
                     SettingsTextInput(
                         label = "Include Name",
                         value = remember { mutableStateOf("") },
@@ -505,7 +522,6 @@ class MapFragment : Fragment() {
                         onValueChange = { /* Handle exclude name value change */ }
                     )
 
-                    // Star search slider with star rating
                     SettingsStarRating(
                         label = "Minimum Star Rating",
                         rating = remember { mutableStateOf(3) },
