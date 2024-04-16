@@ -3,7 +3,9 @@ package com.example.pickuppal
 import FirebaseAPI
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.location.Location
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -75,6 +77,7 @@ import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import coil.compose.AsyncImage
 import com.google.android.gms.maps.MapView
+import com.google.android.gms.maps.model.ButtCap
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.tasks.Task
@@ -102,6 +105,7 @@ class MapFragment : Fragment() {
     private lateinit var db: DatabaseReference
     private var postingDataList = mutableListOf<PostingData>()
     private var polylineToShow: List<LatLng>? = null
+    private var polylineDestination: String? = null
     private val firebaseAPI = FirebaseAPI()
     private lateinit var profilePic: String
 
@@ -203,7 +207,6 @@ class MapFragment : Fragment() {
         val postingData = remember{mutableStateOf<PostingData?>(null)}
         var cameraPositionState = rememberCameraPositionState()
         val filteredPostingDataList = remember { mutableStateOf(postingDataList) }
-        val polyline = remember{mutableStateOf(polylineToShow)}
 
         LaunchedEffect(Unit)
         {
@@ -238,7 +241,16 @@ class MapFragment : Fragment() {
                     if(polylineToShow != null) {
                         Polyline(
                             points = polylineToShow!!,
-                            color = Color.Blue
+                            color = Color.Blue,
+                            startCap = ButtCap(),
+                            clickable = true,
+                            onClick = {val geoUri = "geo:0,0?q=${Uri.encode(polylineDestination)}"
+                                val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse(geoUri))
+                                // Set the package to specifically launch Google Maps app
+                                mapIntent.setPackage("com.google.android.apps.maps")
+                                startActivity(mapIntent)
+                            }
+
                         )
                     }
                 }
@@ -529,6 +541,7 @@ class MapFragment : Fragment() {
                     Log.d(ContentValues.TAG, "polyline: $polyline")
                     decodedPolyline = decodePolyLines(polyline)
                     polylineToShow = decodedPolyline
+                    polylineDestination = postingData.reverseGeocodedAddress
                     Log.d(ContentValues.TAG, "decoded polyline: $decodedPolyline")
 
                 }
