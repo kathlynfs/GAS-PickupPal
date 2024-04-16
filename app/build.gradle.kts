@@ -26,12 +26,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        //val localProperties = Properties()
-        //localProperties.load(FileInputStream(rootProject.file("local.properties")))
-        //val MAPS_API_KEY = localProperties["MAPS_API_KEY"].toString()
-
-        //buildConfigField("String", "MAPS_API_KEY", MAPS_API_KEY)
     }
 
     buildTypes {
@@ -130,6 +124,4 @@ dependencies {
     implementation("com.jakewharton.retrofit:retrofit2-kotlin-coroutines-adapter:0.9.2")
     implementation("com.squareup.moshi:moshi:1.8.0")
     implementation("io.coil-kt:coil-compose:2.2.2")
-
-
 }

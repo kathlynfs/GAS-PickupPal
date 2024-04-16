@@ -1,19 +1,17 @@
 package com.example.pickuppal
 
 import FirebaseAPI
-import PostingDataListCallBack
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.location.Location
-import android.media.Image
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,7 +26,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -37,8 +34,6 @@ import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -54,7 +49,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -67,7 +61,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.BottomCenter
-import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -76,19 +69,15 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import coil.compose.AsyncImage
-import com.google.android.gms.maps.CameraUpdateFactory
-
 import com.google.android.gms.maps.MapView
+import com.google.android.gms.maps.model.ButtCap
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.tasks.Task
@@ -96,11 +85,10 @@ import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
 import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -110,17 +98,22 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+
 class MapFragment : Fragment() {
     private var currentLocation: Location? = null
     private lateinit var currentLocationDeterminer: CurrentLocationDeterminer
     private lateinit var db: DatabaseReference
     private var postingDataList = mutableListOf<PostingData>()
+    private var polylineToShow: List<LatLng>? = null
+    private var polylineDestination: String? = null
     private val firebaseAPI = FirebaseAPI()
+    private lateinit var profilePic: String
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View
     {
         val args = MapFragmentArgs.fromBundle(requireArguments())
         val profilePicture = args.user.profilePictureUrl
+        profilePic = profilePicture!!
         db = FirebaseAPI().getDB()
 
         determineCurrentLocation().addOnSuccessListener { location ->
@@ -167,7 +160,7 @@ class MapFragment : Fragment() {
             setContent {
                 MapScreen(
                     profilePictureUrl = profilePicture!!,
-                    navController = navController) }
+                    navController = navController)}
         }
     }
 
@@ -176,6 +169,10 @@ class MapFragment : Fragment() {
 
         val args = MapFragmentArgs.fromBundle(requireArguments())
         val user = args.user
+
+
+
+
 //        Toast.makeText(
 //            requireContext(),
 //            user.userId,
@@ -239,6 +236,21 @@ class MapFragment : Fragment() {
                                 isMarkerClickPostingDataOpen.value = true
                                 isMarkerClickPostingDataOpen.value
                             }
+                        )
+                    }
+                    if(polylineToShow != null) {
+                        Polyline(
+                            points = polylineToShow!!,
+                            color = Color.Blue,
+                            startCap = ButtCap(),
+                            clickable = true,
+                            onClick = {val geoUri = "geo:0,0?q=${Uri.encode(polylineDestination)}"
+                                val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse(geoUri))
+                                // Set the package to specifically launch Google Maps app
+                                mapIntent.setPackage("com.google.android.apps.maps")
+                                startActivity(mapIntent)
+                            }
+
                         )
                     }
                 }
@@ -365,7 +377,6 @@ class MapFragment : Fragment() {
             MarkerClickPostingData(postingData.value!!, user, onDismissRequest = { isMarkerClickPostingDataOpen.value = false })
         }
     }
-
 
     @Composable
     fun MarkerClickPostingData(postingData: PostingData, user: UserData, onDismissRequest: () -> Unit) {
@@ -505,6 +516,42 @@ class MapFragment : Fragment() {
 
         if (shouldMakeImageFullScreen.value) {
             MakeImageFullscreen(postingData, onDismissRequest = { shouldMakeImageFullScreen.value = false })
+        }
+
+        if (shouldTrackRoute.value) {
+            TrackRoute(postingData, currentLocation!!, onDismissRequest = { shouldTrackRoute.value = false })
+        }
+    }
+
+    @Composable
+    fun TrackRoute(postingData: PostingData, currentLocation: Location, onDismissRequest: () -> Unit)
+    {
+        var destination = postingData.lat.toString() + ", " + postingData.lng.toString()
+        var origin = currentLocation.latitude.toString() + ", " + currentLocation.longitude.toString()
+        var decodedPolyline: List<LatLng>? = null
+
+        LaunchedEffect(Unit)
+        {
+            lifecycleScope.launch {
+                try {
+                    val directions =
+                        DirectionsFinderResultsRepository().fetchDirections(destination, origin)
+                    val polyline = directions.routes[0].overviewPolyline.points
+                    Log.d(ContentValues.TAG, "directions: $directions")
+                    Log.d(ContentValues.TAG, "polyline: $polyline")
+                    decodedPolyline = decodePolyLines(polyline)
+                    polylineToShow = decodedPolyline
+                    polylineDestination = postingData.reverseGeocodedAddress
+                    Log.d(ContentValues.TAG, "decoded polyline: $decodedPolyline")
+
+                }
+                catch(ex: Exception){
+                    Log.d(ContentValues.TAG, "failed")
+
+                }
+
+
+            }
         }
     }
 
@@ -684,6 +731,43 @@ class MapFragment : Fragment() {
                 }
             }
         }
+    }
+
+    // code from https://stackoverflow.com/questions/39851243/android-ios-decode-polyline-string
+    fun decodePolyLines(poly: String): List<LatLng>? {
+        val len = poly.length
+        var index = 0
+        val decoded: MutableList<LatLng> = ArrayList()
+        var lat = 0
+        var lng = 0
+        while (index < len) {
+            var b: Int
+            var shift = 0
+            var result = 0
+            do {
+                b = poly[index++].code - 63
+                result = result or (b and 0x1f shl shift)
+                shift += 5
+            } while (b >= 0x20)
+            val dlat = if (result and 1 != 0) (result shr 1).inv() else result shr 1
+            lat += dlat
+            shift = 0
+            result = 0
+            do {
+                b = poly[index++].code - 63
+                result = result or (b and 0x1f shl shift)
+                shift += 5
+            } while (b >= 0x20)
+            val dlng = if (result and 1 != 0) (result shr 1).inv() else result shr 1
+            lng += dlng
+            decoded.add(
+                LatLng(
+                    lat / 100000.0,
+                    lng / 100000.0
+                )
+            )
+        }
+        return decoded
     }
 
     @Composable

@@ -4,7 +4,7 @@ import com.example.pickuppal.BuildConfig
 import retrofit2.http.GET
 import retrofit2.http.Query
 
-private val API_KEY = BuildConfig.MAPS_API_KEY
+private const val API_KEY = BuildConfig.MAPS_API_KEY
 
 interface ReverseGeocoder {
     @GET("maps/api/geocode/json?")
