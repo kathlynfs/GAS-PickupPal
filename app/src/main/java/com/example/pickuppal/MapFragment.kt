@@ -394,7 +394,7 @@ class MapFragment : Fragment() {
             Card(
                 modifier = Modifier
                     .align(BottomCenter)
-                    .height(500.dp)
+                    .height(400.dp)
                     .fillMaxWidth()
                     .clickable(enabled = false) {},
                 shape = RectangleShape,
@@ -433,40 +433,48 @@ class MapFragment : Fragment() {
                             model = postingData.photoUrl,
                             contentDescription = postingData.description,
                             modifier = Modifier
+                                .size(200.dp)
                                 .clickable(onClick = {shouldMakeImageFullScreen.value = true} )
                         )
 
                         Spacer(modifier = Modifier.weight(1f))
 
-                        ExtendedFloatingActionButton(
-                            onClick = { shouldTrackRoute.value = true },
-                            icon = { Icon(Icons.Filled.Place, "Extended floating action button.") },
-                            text = { Text(text = "Directions") },
-                            modifier = Modifier
-                                .align(Alignment.Bottom)
-                        )
+                        Column()
+                        {
+                            ExtendedFloatingActionButton(
+                                onClick = { shouldTrackRoute.value = true },
+                                icon = { Icon(Icons.Filled.Place, "Extended floating action button.") },
+                                text = { Text(text = "Directions") },
+                                /*modifier = Modifier
+                                    .align(Alignment.Bottom)*/
+                            )
+
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            Button(
+                                onClick = {
+                                    if (!isOwnItem) {
+                                        firebaseAPI.claimItem(postingData, user)
+                                        isClaimed.value = true
+                                    }
+                                },
+                                modifier = Modifier.defaultMinSize(minWidth = 56.dp, minHeight = 56.dp),
+                                enabled = !isClaimed.value && !isOwnItem,
+                                shape = CircleShape
+
+                            ){
+                                Text(
+                                    text = when {
+                                        isOwnItem -> "You can't claim your own item!"
+                                        isClaimed.value -> "Already Claimed"
+                                        else -> "Claim"
+                                    }
+                                )
+                            }
+
+                        }
                     }
 
-                    Button(
-                        onClick = {
-                            if (!isOwnItem) {
-                                firebaseAPI.claimItem(postingData, user)
-                                isClaimed.value = true
-                            }
-                        },
-                        modifier = Modifier.defaultMinSize(minWidth = 56.dp, minHeight = 56.dp),
-                        enabled = !isClaimed.value && !isOwnItem,
-                        shape = CircleShape
-
-                    ){
-                        Text(
-                            text = when {
-                                isOwnItem -> "You can't claim your own item!"
-                                isClaimed.value -> "Already Claimed"
-                                else -> "Claim"
-                            }
-                        )
-                    }
                     if (postingData.claimedBy == user.userId) {
                         if (postingData.rating == 0) {
                             Row(
