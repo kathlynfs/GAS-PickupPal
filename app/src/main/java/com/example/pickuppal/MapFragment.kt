@@ -85,6 +85,7 @@ import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.ValueEventListener
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
@@ -379,12 +380,33 @@ class MapFragment : Fragment() {
     }
 
     @Composable
-    fun MarkerClickPostingData(postingData: PostingData, user: UserData, onDismissRequest: () -> Unit) {
+    fun MarkerClickPostingData(initialPostingData: PostingData, user: UserData, onDismissRequest: () -> Unit) {
         val shouldTrackRoute = remember { mutableStateOf(false) }
         val shouldMakeImageFullScreen = remember { mutableStateOf(false)}
-        val isClaimed = remember { mutableStateOf(postingData.claimed) }
-        val isOwnItem = postingData.userID == user.userId
-        val rating = remember { mutableIntStateOf(0) }
+        val postingRef = db.child("posting_data").child(initialPostingData.postID)
+        var postingData = remember { mutableStateOf(initialPostingData) }
+        val isOwnItem = postingData.value.userID == user.userId
+        val coroutineScope = rememberCoroutineScope()
+
+        DisposableEffect(initialPostingData.postID) {
+            val postingListener = object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val updatedPostingData = snapshot.getValue(PostingData::class.java)
+                    updatedPostingData?.let {
+                        postingData.value = it
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    // Handle the error
+                }
+            }
+            postingRef.addValueEventListener(postingListener)
+
+            onDispose {
+                postingRef.removeEventListener(postingListener)
+            }
+        }
 
         Box(
             modifier = Modifier
@@ -408,17 +430,17 @@ class MapFragment : Fragment() {
                         .padding(16.dp)
                 ) {
                     Text(
-                        text = postingData.title,
+                        text = postingData.value.title,
                         style = MaterialTheme.typography.headlineMedium,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     Text(
-                        text = postingData.location,
+                        text = postingData.value.location,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     Text(
-                        text = postingData.description,
+                        text = postingData.value.description,
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
@@ -429,8 +451,8 @@ class MapFragment : Fragment() {
                     ) {
                         // want to add ability to click on image and have it show up full screen
                         AsyncImage(
-                            model = postingData.photoUrl,
-                            contentDescription = postingData.description,
+                            model = postingData.value.photoUrl,
+                            contentDescription = postingData.value.description,
                             modifier = Modifier
                                 .clickable(onClick = {shouldMakeImageFullScreen.value = true} )
                         )
@@ -449,26 +471,28 @@ class MapFragment : Fragment() {
                     Button(
                         onClick = {
                             if (!isOwnItem) {
-                                firebaseAPI.claimItem(postingData, user)
-                                isClaimed.value = true
+                                coroutineScope.launch {
+                                    postingRef.child("claimed").setValue(true).await()
+                                    postingRef.child("claimedBy").setValue(user.userId).await()
+                                }
                             }
                         },
                         modifier = Modifier.defaultMinSize(minWidth = 56.dp, minHeight = 56.dp),
-                        enabled = !isClaimed.value && !isOwnItem,
+                        enabled = !postingData.value.claimed && !isOwnItem,
                         shape = CircleShape
 
                     ){
                         Text(
                             text = when {
                                 isOwnItem -> "You can't claim your own item!"
-                                isClaimed.value -> "Already Claimed"
+                                postingData.value.claimed -> "Already Claimed"
                                 else -> "Claim"
                             }
                         )
                     }
 
-                    if (postingData.claimedBy == user.userId) {
-                        if (postingData.rating == 0) {
+                    if (postingData.value.claimedBy == user.userId) {
+                        if (postingData.value.rating == 0) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(top = 16.dp)
@@ -480,24 +504,21 @@ class MapFragment : Fragment() {
                                 Spacer(modifier = Modifier.width(8.dp))
                                 repeat(5) { index ->
                                     Icon(
-                                        imageVector = if (rating.value >= index + 1) Icons.Filled.Star else Icons.Outlined.Star,
+                                        imageVector = if (postingData.value.rating >= index + 1) Icons.Filled.Star else Icons.Outlined.Star,
                                         contentDescription = null,
                                         modifier = Modifier
                                             .size(24.dp)
                                             .clickable {
-                                                rating.value = index + 1
+                                                val newRating = index + 1
+                                                coroutineScope.launch {
+                                                    postingRef.child("rating").setValue(newRating).await()
+                                                    postingData.value.rating = newRating
+                                                }
                                             }
                                     )
                                 }
                             }
-                            Button(
-                                onClick = {
-                                    firebaseAPI.submitRating(postingData, rating.value)
-                                },
-                                modifier = Modifier.padding(top = 8.dp)
-                            ) {
-                                Text(text = "Submit Rating")
-                            }
+
                         } else {
                             Text(
                                 text = "You have already submitted a rating for this item.",
@@ -515,19 +536,19 @@ class MapFragment : Fragment() {
         }
 
         if (shouldMakeImageFullScreen.value) {
-            MakeImageFullscreen(postingData, onDismissRequest = { shouldMakeImageFullScreen.value = false })
+            MakeImageFullscreen(postingData.value, onDismissRequest = { shouldMakeImageFullScreen.value = false })
         }
 
         if (shouldTrackRoute.value) {
-            TrackRoute(postingData, currentLocation!!, onDismissRequest = { shouldTrackRoute.value = false })
+            TrackRoute(postingData.value, currentLocation!!, onDismissRequest = { shouldTrackRoute.value = false })
         }
     }
 
     @Composable
     fun TrackRoute(postingData: PostingData, currentLocation: Location, onDismissRequest: () -> Unit)
     {
-        var destination = postingData.lat.toString() + ", " + postingData.lng.toString()
-        var origin = currentLocation.latitude.toString() + ", " + currentLocation.longitude.toString()
+        val destination = postingData.lat.toString() + ", " + postingData.lng.toString()
+        val origin = currentLocation.latitude.toString() + ", " + currentLocation.longitude.toString()
         var decodedPolyline: List<LatLng>? = null
 
         LaunchedEffect(Unit)
