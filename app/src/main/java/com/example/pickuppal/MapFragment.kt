@@ -134,10 +134,14 @@ class MapFragment : Fragment() {
                         //if (distance <= 10.0) {
                         //    Log.d(ContentValues.TAG, "snapshot.value = $it")
                         postingDataList.add(it)
-                        //}
+                    //}
                     }
                 }
-                override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+
+                override fun onChildChanged(
+                    snapshot: DataSnapshot,
+                    previousChildName: String?
+                ) {
                 }
 
                 override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
@@ -148,11 +152,11 @@ class MapFragment : Fragment() {
                     Log.d(ContentValues.TAG, "snapshot.value = $data ")
                     postingDataList.remove(data)
                 }
+
                 override fun onCancelled(error: DatabaseError) {
                 }
             })
         }
-
 
         return ComposeView(requireContext()).apply {
             val navController = NavHostFragment.findNavController(this@MapFragment)
@@ -169,10 +173,6 @@ class MapFragment : Fragment() {
 
         val args = MapFragmentArgs.fromBundle(requireArguments())
         val user = args.user
-
-
-
-
 //        Toast.makeText(
 //            requireContext(),
 //            user.userId,
@@ -394,7 +394,7 @@ class MapFragment : Fragment() {
             Card(
                 modifier = Modifier
                     .align(BottomCenter)
-                    .height(400.dp)
+                    .height(500.dp)
                     .fillMaxWidth()
                     .clickable(enabled = false) {},
                 shape = RectangleShape,
@@ -425,54 +425,46 @@ class MapFragment : Fragment() {
 
                     Row(
                         modifier = Modifier
-                            .align(Alignment.End),
-
-                        ) {
+                            .align(Alignment.End)
+                    ) {
                         // want to add ability to click on image and have it show up full screen
                         AsyncImage(
                             model = postingData.photoUrl,
                             contentDescription = postingData.description,
                             modifier = Modifier
-                                .size(200.dp)
                                 .clickable(onClick = {shouldMakeImageFullScreen.value = true} )
                         )
 
                         Spacer(modifier = Modifier.weight(1f))
 
-                        Column()
-                        {
-                            ExtendedFloatingActionButton(
-                                onClick = { shouldTrackRoute.value = true },
-                                icon = { Icon(Icons.Filled.Place, "Extended floating action button.") },
-                                text = { Text(text = "Directions") },
-                                /*modifier = Modifier
-                                    .align(Alignment.Bottom)*/
+                        ExtendedFloatingActionButton(
+                            onClick = { shouldTrackRoute.value = true },
+                            icon = { Icon(Icons.Filled.Place, "Extended floating action button.") },
+                            text = { Text(text = "Directions") },
+                            modifier = Modifier
+                                .align(Alignment.Bottom)
                             )
-
-                            Spacer(modifier = Modifier.weight(1f))
-
-                            Button(
-                                onClick = {
-                                    if (!isOwnItem) {
-                                        firebaseAPI.claimItem(postingData, user)
-                                        isClaimed.value = true
-                                    }
-                                },
-                                modifier = Modifier.defaultMinSize(minWidth = 56.dp, minHeight = 56.dp),
-                                enabled = !isClaimed.value && !isOwnItem,
-                                shape = CircleShape
-
-                            ){
-                                Text(
-                                    text = when {
-                                        isOwnItem -> "You can't claim your own item!"
-                                        isClaimed.value -> "Already Claimed"
-                                        else -> "Claim"
-                                    }
-                                )
-                            }
-
                         }
+
+                    Button(
+                        onClick = {
+                            if (!isOwnItem) {
+                                firebaseAPI.claimItem(postingData, user)
+                                isClaimed.value = true
+                            }
+                        },
+                        modifier = Modifier.defaultMinSize(minWidth = 56.dp, minHeight = 56.dp),
+                        enabled = !isClaimed.value && !isOwnItem,
+                        shape = CircleShape
+
+                    ){
+                        Text(
+                            text = when {
+                                isOwnItem -> "You can't claim your own item!"
+                                isClaimed.value -> "Already Claimed"
+                                else -> "Claim"
+                            }
+                        )
                     }
 
                     if (postingData.claimedBy == user.userId) {
