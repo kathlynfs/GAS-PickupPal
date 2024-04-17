@@ -74,26 +74,20 @@ class FirebaseAPI {
             }
     }
 
-    fun claimItem(data: PostingData, claimingUser: UserData) {
-        val updatedPostingData = data.copy(
-            claimed = true,
-            claimedBy = claimingUser.userId
-        )
-        db.child("posting_data").child(data.postID).updateChildren(updatedPostingData.toMap())
-            .addOnSuccessListener {
-                getUserStatistics(claimingUser, object : UserStatisticsCallback {
-                    override fun onUserStatisticsReceived(userStatistics: UserStatistics) {
-                        val updatedStatistics = userStatistics.copy(
-                            numItemsClaimed = userStatistics.numItemsPosted + 1
-                        )
-                        updateUserStatistics(updatedStatistics)
-                    }
-
-                    override fun onUserStatisticsError(e: Exception) {
-                        Log.e(TAG, "Error retrieving user statistics", e)
-                    }
-                })
+    fun claimItem(claimingUser: UserData) {
+        getUserStatistics(claimingUser, object : UserStatisticsCallback {
+            override fun onUserStatisticsReceived(userStatistics: UserStatistics) {
+                val updatedStatistics = userStatistics.copy(
+                    numItemsClaimed = userStatistics.numItemsPosted + 1
+                )
+                updateUserStatistics(updatedStatistics)
             }
+
+            override fun onUserStatisticsError(e: Exception) {
+                Log.e(TAG, "Error retrieving user statistics", e)
+            }
+        })
+
     }
 
     fun uploadImage(bitmap: Bitmap, imageName: String, callback: (String?) -> Unit) {
@@ -174,36 +168,31 @@ class FirebaseAPI {
     }
 
     fun submitRating(postingData: PostingData, rating: Int) {
-        val updatedPostingData = postingData.copy(
-            rating = rating
-        )
-        db.child("posting_data").child(postingData.postID).updateChildren(updatedPostingData.toMap())
-            .addOnSuccessListener {
-                db.child("user_statistics").child(postingData.userID).runTransaction(object : Transaction.Handler {
-                    override fun doTransaction(currentData: MutableData): Transaction.Result {
-                        val userStats = currentData.getValue(UserStatistics::class.java)
-                        if (userStats != null) {
-                            val updatedTotalRating = userStats.totalRating + rating
-                            val updatedNumRatings = userStats.numRatings + 1
-                            currentData.child("totalRating").value = updatedTotalRating
-                            currentData.child("numRatings").value = updatedNumRatings
-                        } else {
-                            // User statistics don't exist, create new entry
-                            val newUserStats = UserStatistics(totalRating = rating, numRatings = 1)
-                            currentData.value = newUserStats
-                        }
-                        return Transaction.success(currentData)
-                    }
 
-                    override fun onComplete(
-                        error: DatabaseError?,
-                        committed: Boolean,
-                        currentData: DataSnapshot?
-                    ) {
-                        //doesn't need to do anything
-                    }
-                })
+        db.child("user_statistics").child(postingData.userID).runTransaction(object : Transaction.Handler {
+            override fun doTransaction(currentData: MutableData): Transaction.Result {
+                val userStats = currentData.getValue(UserStatistics::class.java)
+                if (userStats != null) {
+                    val updatedTotalRating = userStats.totalRating + rating
+                    val updatedNumRatings = userStats.numRatings + 1
+                    currentData.child("totalRating").value = updatedTotalRating
+                    currentData.child("numRatings").value = updatedNumRatings
+                } else {
+                    // User statistics don't exist, create new entry
+                    val newUserStats = UserStatistics(totalRating = rating, numRatings = 1)
+                    currentData.value = newUserStats
+                }
+                return Transaction.success(currentData)
             }
+
+            override fun onComplete(
+                error: DatabaseError?,
+                committed: Boolean,
+                currentData: DataSnapshot?
+            ) {
+                //doesn't need to do anything
+            }
+        })
     }
 
     fun getPostingDataList(data: UserData, callback: PostingDataListCallBack) {

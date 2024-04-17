@@ -384,7 +384,7 @@ class MapFragment : Fragment() {
         val shouldTrackRoute = remember { mutableStateOf(false) }
         val shouldMakeImageFullScreen = remember { mutableStateOf(false)}
         val postingRef = db.child("posting_data").child(initialPostingData.postID)
-        var postingData = remember { mutableStateOf(initialPostingData) }
+        val postingData = remember { mutableStateOf(initialPostingData) }
         val isOwnItem = postingData.value.userID == user.userId
         val coroutineScope = rememberCoroutineScope()
 
@@ -475,6 +475,7 @@ class MapFragment : Fragment() {
                                     postingRef.child("claimed").setValue(true).await()
                                     postingRef.child("claimedBy").setValue(user.userId).await()
                                 }
+                                firebaseAPI.claimItem(user)
                             }
                         },
                         modifier = Modifier.defaultMinSize(minWidth = 56.dp, minHeight = 56.dp),
@@ -514,6 +515,7 @@ class MapFragment : Fragment() {
                                                     postingRef.child("rating").setValue(newRating).await()
                                                     postingData.value.rating = newRating
                                                 }
+                                                firebaseAPI.submitRating(postingData.value, newRating)
                                             }
                                     )
                                 }
@@ -651,7 +653,11 @@ class MapFragment : Fragment() {
                     SettingsStarRating(
                         label = "Minimum Star Rating",
                         rating = remember { mutableStateOf(3) },
-                        onRatingChange = { /* Handle star search rating change */ }
+                        onRatingChange = { minRating ->
+                            filteredPostingDataList.value = postingDataList.filter { data ->
+                                data.rating >= minRating
+                            }.toMutableList()
+                        }
                     )
                 }
             }
