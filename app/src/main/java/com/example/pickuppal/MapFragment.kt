@@ -298,9 +298,6 @@ class MapFragment : Fragment() {
                 },
                 onSearch = {
                     isSearchActive.value = false
-                    filteredPostingDataList.value = postingDataList.filter { data ->
-                        data.title.equals(searchQuery.value, ignoreCase = true)
-                    }.toMutableList()
                 },
                 active = isSearchActive.value,
                 onActiveChange = { isSearchActive.value = it },
