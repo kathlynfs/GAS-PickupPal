@@ -1,6 +1,7 @@
 package com.example.pickuppal
 
 import FirebaseAPI
+import UserStatisticsCallback
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -91,6 +92,7 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlin.math.atan2
@@ -606,6 +608,8 @@ class MapFragment : Fragment() {
 
     @Composable
     fun SearchSettingsMenu(filteredPostingDataList: MutableState<MutableList<PostingData>>, onDismissRequest: () -> Unit) {
+        val args = MapFragmentArgs.fromBundle(requireArguments())
+        val user = args.user
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -651,9 +655,42 @@ class MapFragment : Fragment() {
                         label = "Minimum Star Rating",
                         rating = remember { mutableStateOf(3) },
                         onRatingChange = { minRating ->
-                            filteredPostingDataList.value = postingDataList.filter { data ->
-                                data.rating >= minRating
-                            }.toMutableList()
+                            viewLifecycleOwner.lifecycleScope.launch {
+                                val filteredList = postingDataList.filter { data ->
+                                    val userId = data.userID
+                                    var averageRating = 0f
+
+                                    val deferredRating = CompletableDeferred<Float>()
+                                    firebaseAPI.getUserStatistics(userId, object : UserStatisticsCallback {
+                                        override fun onUserStatisticsReceived(userStatistics: UserStatistics) {
+                                            val totalRating = userStatistics.totalRating
+                                            val numRatings = userStatistics.numRatings
+                                            val calculatedRating = if (numRatings > 0) {
+                                                totalRating.toFloat() / numRatings
+                                            } else {
+                                                0f
+                                            }
+                                            deferredRating.complete(calculatedRating)
+                                        }
+
+                                        override fun onUserStatisticsError(e: Exception) {
+                                            Log.e("TAG", "Error retrieving user statistics for user $userId", e)
+                                            deferredRating.completeExceptionally(e)
+                                        }
+                                    })
+
+                                    try {
+                                        averageRating = deferredRating.await()
+                                        Log.d("TAG", "$userId: $averageRating")
+                                    } catch (e: Exception) {
+                                        Log.e("TAG", "Error waiting for user statistics: $e")
+                                    }
+
+                                    Log.d("TAG", "$userId: $averageRating, MinRating: $minRating")
+                                    averageRating >= minRating
+                                }
+                                filteredPostingDataList.value = filteredList.toMutableList()
+                            }
                         }
                     )
                 }
@@ -750,7 +787,11 @@ class MapFragment : Fragment() {
                     Icon(
                         imageVector = if (rating.value > index) Icons.Filled.Star else Icons.Outlined.Star,
                         contentDescription = null,
-                        modifier = Modifier.clickable { rating.value = index + 1 }
+                        modifier = Modifier.clickable {
+                            val newRating = index + 1
+                            rating.value = newRating
+                            onRatingChange(newRating)
+                        }
                     )
                 }
             }
