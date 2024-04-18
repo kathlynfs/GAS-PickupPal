@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Divider
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
@@ -66,6 +67,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -169,18 +171,6 @@ class MapFragment : Fragment() {
                     profilePictureUrl = profilePicture!!,
                     navController = navController)}
         }
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
-        val args = MapFragmentArgs.fromBundle(requireArguments())
-        val user = args.user
-//        Toast.makeText(
-//            requireContext(),
-//            user.userId,
-//            Toast.LENGTH_SHORT
-//        ).show()
     }
 
     override fun onAttach(context: Context) {
@@ -453,7 +443,12 @@ class MapFragment : Fragment() {
                             model = postingData.value.photoUrl,
                             contentDescription = postingData.value.description,
                             modifier = Modifier
-                                .clickable(onClick = {shouldMakeImageFullScreen.value = true} )
+                                .size(200.dp)
+                                .graphicsLayer(
+                                    rotationZ = 90f
+                                )
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable(onClick = { shouldMakeImageFullScreen.value = true })
                         )
 
                         Spacer(modifier = Modifier.weight(1f))
@@ -653,8 +648,9 @@ class MapFragment : Fragment() {
 
                     SettingsStarRating(
                         label = "Minimum Star Rating",
-                        rating = remember { mutableStateOf(3) },
+                        rating = remember { mutableIntStateOf(3) },
                         onRatingChange = { minRating ->
+                            // used lifecycle scope from chat
                             viewLifecycleOwner.lifecycleScope.launch {
                                 val filteredList = postingDataList.filter { data ->
                                     val userId = data.userID
