@@ -124,4 +124,5 @@ dependencies {
     implementation("com.jakewharton.retrofit:retrofit2-kotlin-coroutines-adapter:0.9.2")
     implementation("com.squareup.moshi:moshi:1.8.0")
     implementation("io.coil-kt:coil-compose:2.2.2")
+    implementation("com.google.maps.android:maps-compose:4.3.3")
 }

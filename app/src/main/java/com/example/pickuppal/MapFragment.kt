@@ -88,6 +88,7 @@ import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import coil.compose.AsyncImage
 import com.google.android.gms.maps.MapView
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.ButtCap
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -97,6 +98,7 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
+import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
@@ -216,11 +218,18 @@ class MapFragment : Fragment() {
                 val location = determineCurrentLocation().await()
                 currentLocation.value = location
             }
+
+            while (true) {
+                val location = determineCurrentLocation().await()
+                currentLocation.value = location
+                delay(1000)
+            }
+
         }
 
-        currentLocation.value?.let { currentLocation ->
+        currentLocation.value?.let { currLocation ->
             val startingLocation =
-                LatLng(currentLocation.latitude, currentLocation.longitude)
+                LatLng(currLocation.latitude, currLocation.longitude)
             cameraPositionState = rememberCameraPositionState {
                 position = CameraPosition.fromLatLngZoom(startingLocation, 15f)
             }
@@ -231,6 +240,14 @@ class MapFragment : Fragment() {
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = cameraPositionState,
                 content = {
+                    currentLocation.value?.let { location ->
+                        val userLocation = LatLng(location.latitude, location.longitude)
+                        Circle(
+                            center = userLocation,
+                            radius = 30.0,
+                            fillColor = Color.Blue
+                        )
+                    }
                     filteredPostingDataList.value.forEach{ data ->
                         Marker(
                             state = MarkerState(LatLng(data.lat, data.lng)),
