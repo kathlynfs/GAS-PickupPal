@@ -12,7 +12,7 @@ data class UserStatistics(
             "userID" to userID,
             "numItemsPosted" to numItemsPosted,
             "numItemsClaimed" to numItemsClaimed,
-            "numRating" to numRatings,
+            "numRatings" to numRatings,
             "totalRating" to totalRating,
         )
     }

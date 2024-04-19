@@ -1,6 +1,7 @@
 package com.example.pickuppal
 
 import FirebaseAPI
+import UserStatisticsCallback
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -12,6 +13,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,11 +36,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Divider
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -65,6 +74,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -91,6 +101,8 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlin.math.atan2
@@ -167,18 +179,6 @@ class MapFragment : Fragment() {
                     profilePictureUrl = profilePicture!!,
                     navController = navController)}
         }
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
-        val args = MapFragmentArgs.fromBundle(requireArguments())
-        val user = args.user
-//        Toast.makeText(
-//            requireContext(),
-//            user.userId,
-//            Toast.LENGTH_SHORT
-//        ).show()
     }
 
     override fun onAttach(context: Context) {
@@ -323,19 +323,33 @@ class MapFragment : Fragment() {
                     }
                 },
                 trailingIcon = {
-                    IconButton(
-                        onClick = {
-                            val action = MapFragmentDirections.actionMapFragmentToProfileFragment(user)
-
-                            navController.navigate(action) // Navigate to ProfileFragment
-                        }) {
-                        AsyncImage(
-                            model = profilePictureUrl,
-                            contentDescription = "Profile Picture",
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape)
-                        )
+                    if (searchQuery.value.isNotEmpty()) {
+                        IconButton(
+                            onClick = {
+                                searchQuery.value = ""
+                                filteredPostingDataList.value = postingDataList
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Clear"
+                            )
+                        }
+                    } else {
+                        IconButton(
+                            onClick = {
+                                val action = MapFragmentDirections.actionMapFragmentToProfileFragment(user)
+                                navController.navigate(action) // Navigate to ProfileFragment
+                            }
+                        ) {
+                            AsyncImage(
+                                model = profilePictureUrl,
+                                contentDescription = "Profile Picture",
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(CircleShape)
+                            )
+                        }
                     }
                 },
                 content = {
@@ -359,31 +373,97 @@ class MapFragment : Fragment() {
 
             )
         }
+        // SETTINGS VISUALIZER
+        val isSettingsMenuVisible = remember { mutableStateOf(false) }
+        val isSettingsMenuAnimationFinished = remember { mutableStateOf(false) }
+
         BackHandler(enabled = isSettingsMenuOpen.value) {
             isSettingsMenuOpen.value = false
         }
 
-        if (isSettingsMenuOpen.value) {
-            SearchSettingsMenu(filteredPostingDataList, onDismissRequest = { isSettingsMenuOpen.value = false })
+        LaunchedEffect(isMarkerClickPostingDataOpen.value) {
+            if (isMarkerClickPostingDataOpen.value) {
+                isSettingsMenuVisible.value = true
+                isSettingsMenuAnimationFinished.value = false
+            }
         }
 
+        LaunchedEffect(isSettingsMenuOpen.value) {
+            if (isSettingsMenuOpen.value) {
+                isSettingsMenuAnimationFinished.value = false
+            }
+        }
+
+        if (isSettingsMenuOpen.value) {
+            SearchSettingsMenu(
+                filteredPostingDataList,
+                onDismissRequest = { isSettingsMenuVisible.value = false },
+                isSettingsMenuVisible,
+                onAnimationFinished = {
+                    isSettingsMenuAnimationFinished.value = true
+                }
+            )
+            LaunchedEffect(isSettingsMenuAnimationFinished.value) {
+                if (isSettingsMenuAnimationFinished.value) {
+                    isSettingsMenuOpen.value = false
+                }
+            }
+        }
+
+        // CARD VISUALIZER
+        val isCardVisible = remember { mutableStateOf(false) }
+        val isAnimationFinished = remember { mutableStateOf(false) }
+
         BackHandler(enabled = isMarkerClickPostingDataOpen.value) {
-            isMarkerClickPostingDataOpen.value = false
+            isCardVisible.value = false
+        }
+
+        LaunchedEffect(isMarkerClickPostingDataOpen.value) {
+            if (isMarkerClickPostingDataOpen.value) {
+                isCardVisible.value = true
+                isAnimationFinished.value = false
+            }
         }
 
         if (isMarkerClickPostingDataOpen.value) {
-            MarkerClickPostingData(postingData.value!!, user, onDismissRequest = { isMarkerClickPostingDataOpen.value = false })
+            MarkerClickPostingData(
+                postingData.value!!,
+                user,
+                onDismissRequest = {
+                    isCardVisible.value = false
+                },
+                isCardVisible,
+                onAnimationFinished = {
+                    isAnimationFinished.value = true
+                }
+            )
+
+            LaunchedEffect(isAnimationFinished.value) {
+                if (isAnimationFinished.value) {
+                    isMarkerClickPostingDataOpen.value = false
+                }
+            }
         }
     }
 
     @Composable
-    fun MarkerClickPostingData(initialPostingData: PostingData, user: UserData, onDismissRequest: () -> Unit) {
+    fun MarkerClickPostingData(
+        initialPostingData: PostingData,
+        user: UserData,
+        onDismissRequest: () -> Unit,
+        isVisible: MutableState<Boolean>,
+        onAnimationFinished: () -> Unit)
+    {
         val shouldTrackRoute = remember { mutableStateOf(false) }
         val shouldMakeImageFullScreen = remember { mutableStateOf(false)}
         val postingRef = db.child("posting_data").child(initialPostingData.postID)
         val postingData = remember { mutableStateOf(initialPostingData) }
         val isOwnItem = postingData.value.userID == user.userId
         val coroutineScope = rememberCoroutineScope()
+
+        LaunchedEffect(initialPostingData) {
+            isVisible.value = true
+        }
 
         DisposableEffect(initialPostingData.postID) {
             val postingListener = object : ValueEventListener {
@@ -405,128 +485,162 @@ class MapFragment : Fragment() {
             }
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clickable { onDismissRequest() }
-        ) {
-            Card(
-                modifier = Modifier
-                    .align(BottomCenter)
-                    .height(500.dp)
-                    .fillMaxWidth()
-                    .clickable(enabled = false) {},
-                shape = RectangleShape,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = postingData.value.title,
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                    Text(
-                        text = postingData.value.location,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                    Text(
-                        text = postingData.value.description,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
+        AnimatedVisibility(
+            visible = isVisible.value,
+            enter = slideInVertically(
+                initialOffsetY = { fullHeight -> fullHeight },
+                animationSpec = tween(durationMillis = 300)
+            ),
+            exit = slideOutVertically(
+                targetOffsetY = { fullHeight -> fullHeight },
+                animationSpec = tween(durationMillis = 300)
+            ),
 
-                    Row(
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable { onDismissRequest() }
+            ) {
+                Card(
+                    modifier = Modifier
+                        .align(BottomCenter)
+                        .height(500.dp)
+                        .fillMaxWidth()
+                        .clickable(enabled = false) {},
+                    shape = RectangleShape,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Column(
                         modifier = Modifier
-                            .align(Alignment.End)
+                            .fillMaxSize()
+                            .padding(16.dp)
                     ) {
-                        // want to add ability to click on image and have it show up full screen
-                        AsyncImage(
-                            model = postingData.value.photoUrl,
-                            contentDescription = postingData.value.description,
-                            modifier = Modifier
-                                .clickable(onClick = {shouldMakeImageFullScreen.value = true} )
+                        Text(
+                            text = postingData.value.title,
+                            style = MaterialTheme.typography.headlineMedium,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        Text(
+                            text = postingData.value.location,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        Text(
+                            text = postingData.value.description,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(bottom = 16.dp)
                         )
 
-                        Spacer(modifier = Modifier.weight(1f))
-
-                        ExtendedFloatingActionButton(
-                            onClick = { shouldTrackRoute.value = true },
-                            icon = { Icon(Icons.Filled.Place, "Extended floating action button.") },
-                            text = { Text(text = "Directions") },
+                        Row(
                             modifier = Modifier
-                                .align(Alignment.Bottom)
+                                .align(Alignment.End)
+                        ) {
+                            // want to add ability to click on image and have it show up full screen
+                            AsyncImage(
+                                model = postingData.value.photoUrl,
+                                contentDescription = postingData.value.description,
+                                modifier = Modifier
+                                    .size(200.dp)
+                                    .graphicsLayer(
+                                        rotationZ = 90f
+                                    )
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable(onClick = { shouldMakeImageFullScreen.value = true })
+                            )
+
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            ExtendedFloatingActionButton(
+                                onClick = { shouldTrackRoute.value = true },
+                                icon = {
+                                    Icon(
+                                        Icons.Filled.Place,
+                                        "Extended floating action button."
+                                    )
+                                },
+                                text = { Text(text = "Directions") },
+                                modifier = Modifier
+                                    .align(Alignment.Bottom)
                             )
                         }
 
-                    Button(
-                        onClick = {
-                            if (!isOwnItem) {
-                                coroutineScope.launch {
-                                    postingRef.child("claimed").setValue(true).await()
-                                    postingRef.child("claimedBy").setValue(user.userId).await()
+                        Button(
+                            onClick = {
+                                if (!isOwnItem) {
+                                    coroutineScope.launch {
+                                        postingRef.child("claimed").setValue(true).await()
+                                        postingRef.child("claimedBy").setValue(user.userId).await()
+                                    }
+                                    firebaseAPI.claimItem(user)
                                 }
-                                firebaseAPI.claimItem(user)
-                            }
-                        },
-                        modifier = Modifier.defaultMinSize(minWidth = 56.dp, minHeight = 56.dp),
-                        enabled = !postingData.value.claimed && !isOwnItem,
-                        shape = CircleShape
+                            },
+                            modifier = Modifier.defaultMinSize(minWidth = 56.dp, minHeight = 56.dp),
+                            enabled = !postingData.value.claimed && !isOwnItem,
+                            shape = CircleShape
 
-                    ){
-                        Text(
-                            text = when {
-                                isOwnItem -> "You can't claim your own item!"
-                                postingData.value.claimed -> "Already Claimed"
-                                else -> "Claim"
-                            }
-                        )
-                    }
-
-                    if (postingData.value.claimedBy == user.userId) {
-                        if (postingData.value.rating == 0) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(top = 16.dp)
-                            ) {
-                                Text(
-                                    text = "Rate the item:",
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                repeat(5) { index ->
-                                    Icon(
-                                        imageVector = if (postingData.value.rating >= index + 1) Icons.Filled.Star else Icons.Outlined.Star,
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .clickable {
-                                                val newRating = index + 1
-                                                coroutineScope.launch {
-                                                    postingRef.child("rating").setValue(newRating).await()
-                                                    postingData.value.rating = newRating
-                                                }
-                                                firebaseAPI.submitRating(postingData.value, newRating)
-                                            }
-                                    )
-                                }
-                            }
-
-                        } else {
+                        ) {
                             Text(
-                                text = "You have already submitted a rating for this item.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(top = 16.dp)
+                                text = when {
+                                    isOwnItem -> "You can't claim your own item!"
+                                    postingData.value.claimed -> "Already Claimed"
+                                    else -> "Claim"
+                                }
                             )
+                        }
+
+                        if (postingData.value.claimedBy == user.userId) {
+                            if (postingData.value.rating == 0) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(top = 16.dp)
+                                ) {
+                                    Text(
+                                        text = "Rate the item:",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    repeat(5) { index ->
+                                        Icon(
+                                            imageVector = if (postingData.value.rating >= index + 1) Icons.Filled.Star else Icons.Outlined.Star,
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .clickable {
+                                                    val newRating = index + 1
+                                                    coroutineScope.launch {
+                                                        postingRef.child("rating")
+                                                            .setValue(newRating).await()
+                                                        postingData.value.rating = newRating
+                                                    }
+                                                    firebaseAPI.submitRating(
+                                                        postingData.value,
+                                                        newRating
+                                                    )
+                                                }
+                                        )
+                                    }
+                                }
+
+                            } else {
+                                Text(
+                                    text = "You have already submitted a rating for this item.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(top = 16.dp)
+                                )
+                            }
                         }
                     }
                 }
+            }
+        }
+
+        LaunchedEffect(isVisible.value) {
+            if (!isVisible.value) {
+                delay(300)
+                onAnimationFinished()
             }
         }
 
@@ -605,57 +719,136 @@ class MapFragment : Fragment() {
     }
 
     @Composable
-    fun SearchSettingsMenu(filteredPostingDataList: MutableState<MutableList<PostingData>>, onDismissRequest: () -> Unit) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clickable { onDismissRequest() }
+    fun SearchSettingsMenu(
+        filteredPostingDataList: MutableState<MutableList<PostingData>>,
+        onDismissRequest: () -> Unit,
+        isVisible: MutableState<Boolean>,
+        onAnimationFinished: () -> Unit
+    ) {
+        LaunchedEffect(filteredPostingDataList) {
+            isVisible.value = true
+        }
+
+        LaunchedEffect(isVisible.value) {
+            if (!isVisible.value) {
+                delay(300)
+                onAnimationFinished()
+            }
+        }
+
+        val args = MapFragmentArgs.fromBundle(requireArguments())
+        val user = args.user
+        AnimatedVisibility(
+            visible = isVisible.value,
+            enter = slideInHorizontally(
+                initialOffsetX = { -it },
+                animationSpec = tween(durationMillis = 300)
+            ),
+            exit = slideOutHorizontally(
+                targetOffsetX = { -it },
+                animationSpec = tween(durationMillis = 300)
+            )
         ) {
-            Card(
+            Box(
                 modifier = Modifier
-                    .fillMaxHeight()
-                    .width(300.dp)
-                    .clickable(enabled = false) {},
-                shape = RectangleShape,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                    .fillMaxSize()
+                    .clickable { onDismissRequest() }
             ) {
-                Column(
+                Card(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
+                        .fillMaxHeight()
+                        .width(300.dp)
+                        .clickable(enabled = false) {},
+                    shape = RectangleShape,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 ) {
-                    Text(
-                        text = "Search Settings",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Search Settings",
+                            style = MaterialTheme.typography.headlineSmall,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
 
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-                    SettingsSlider(
-                        label = "Distance",
-                        value = remember { mutableFloatStateOf(2.5f) },
-                        range = 1f..10f,
-                        steps = 18,
-                        onValueChange = { distanceVal ->
-                            filteredPostingDataList.value = postingDataList.filter { data ->
-                                Log.d("TAG", currentLocation.toString())
-                                calculateDistance(LatLng(data.lat, data.lng), LatLng(currentLocation!!.latitude, currentLocation!!.longitude)) <= distanceVal
-                            }.toMutableList()
-                        }
-                    )
+                        SettingsSlider(
+                            label = "Distance",
+                            value = remember { mutableFloatStateOf(2.5f) },
+                            range = 1f..10f,
+                            steps = 18,
+                            onValueChange = { distanceVal ->
+                                filteredPostingDataList.value = postingDataList.filter { data ->
+                                    Log.d("TAG", currentLocation.toString())
+                                    calculateDistance(
+                                        LatLng(data.lat, data.lng),
+                                        LatLng(
+                                            currentLocation!!.latitude,
+                                            currentLocation!!.longitude
+                                        )
+                                    ) <= distanceVal
+                                }.toMutableList()
+                            }
+                        )
 
-                    SettingsStarRating(
-                        label = "Minimum Star Rating",
-                        rating = remember { mutableStateOf(3) },
-                        onRatingChange = { minRating ->
-                            filteredPostingDataList.value = postingDataList.filter { data ->
-                                data.rating >= minRating
-                            }.toMutableList()
-                        }
-                    )
+                        SettingsStarRating(
+                            label = "Minimum Star Rating",
+                            rating = remember { mutableIntStateOf(3) },
+                            onRatingChange = { minRating ->
+                                // used lifecycle scope from chat
+                                viewLifecycleOwner.lifecycleScope.launch {
+                                    val filteredList = postingDataList.filter { data ->
+                                        val userId = data.userID
+                                        var averageRating = 0f
+
+                                        val deferredRating = CompletableDeferred<Float>()
+                                        firebaseAPI.getUserStatistics(
+                                            userId,
+                                            object : UserStatisticsCallback {
+                                                override fun onUserStatisticsReceived(userStatistics: UserStatistics) {
+                                                    val totalRating = userStatistics.totalRating
+                                                    val numRatings = userStatistics.numRatings
+                                                    val calculatedRating = if (numRatings > 0) {
+                                                        totalRating.toFloat() / numRatings
+                                                    } else {
+                                                        0f
+                                                    }
+                                                    deferredRating.complete(calculatedRating)
+                                                }
+
+                                                override fun onUserStatisticsError(e: Exception) {
+                                                    Log.e(
+                                                        "TAG",
+                                                        "Error retrieving user statistics for user $userId",
+                                                        e
+                                                    )
+                                                    deferredRating.completeExceptionally(e)
+                                                }
+                                            })
+
+                                        try {
+                                            averageRating = deferredRating.await()
+                                            Log.d("TAG", "$userId: $averageRating")
+                                        } catch (e: Exception) {
+                                            Log.e("TAG", "Error waiting for user statistics: $e")
+                                        }
+
+                                        Log.d(
+                                            "TAG",
+                                            "$userId: $averageRating, MinRating: $minRating"
+                                        )
+                                        averageRating >= minRating
+                                    }
+                                    filteredPostingDataList.value = filteredList.toMutableList()
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -750,7 +943,11 @@ class MapFragment : Fragment() {
                     Icon(
                         imageVector = if (rating.value > index) Icons.Filled.Star else Icons.Outlined.Star,
                         contentDescription = null,
-                        modifier = Modifier.clickable { rating.value = index + 1 }
+                        modifier = Modifier.clickable {
+                            val newRating = index + 1
+                            rating.value = newRating
+                            onRatingChange(newRating)
+                        }
                     )
                 }
             }
