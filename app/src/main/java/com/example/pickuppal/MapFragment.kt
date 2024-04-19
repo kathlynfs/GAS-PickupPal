@@ -19,6 +19,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -224,7 +225,8 @@ class MapFragment : Fragment() {
                 position = CameraPosition.fromLatLngZoom(startingLocation, 15f)
             }
         }
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().background(color = Color(0xFFF5F5F5))
+        ) {
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = cameraPositionState,
@@ -311,8 +313,6 @@ class MapFragment : Fragment() {
                         onClick = {
                             if (isSearchActive.value) {
                                 isSearchActive.value = false
-                                searchQuery.value = ""
-                                filteredPostingDataList.value = postingDataList
                             }
                         }
                     ) {
