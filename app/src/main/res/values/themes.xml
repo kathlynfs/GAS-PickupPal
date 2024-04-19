@@ -4,6 +4,9 @@
         <!-- Customize your light theme here. -->
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
     </style>
+    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="android:windowBackground">@color/app_background</item>
+    </style>
 
     <style name="Theme.PickupPal" parent="Base.Theme.PickupPal" />
 </resources>
