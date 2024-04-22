@@ -64,11 +64,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.BottomCenter
 import androidx.compose.ui.Modifier
@@ -100,6 +102,7 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
 import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
@@ -234,20 +237,16 @@ class MapFragment : Fragment() {
                 position = CameraPosition.fromLatLngZoom(startingLocation, 15f)
             }
         }
+        val properties by remember {
+            mutableStateOf(MapProperties(isMyLocationEnabled = true))
+        }
         Box(modifier = Modifier.fillMaxSize().background(color = Color(0xFFF5F5F5))
         ) {
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
+                properties = properties,
                 cameraPositionState = cameraPositionState,
                 content = {
-                    currentLocation.value?.let { location ->
-                        val userLocation = LatLng(location.latitude, location.longitude)
-                        Circle(
-                            center = userLocation,
-                            radius = 30.0,
-                            fillColor = Color.Blue
-                        )
-                    }
                     filteredPostingDataList.value.forEach{ data ->
                         Marker(
                             state = MarkerState(LatLng(data.lat, data.lng)),
@@ -273,7 +272,7 @@ class MapFragment : Fragment() {
 
                         )
                     }
-                }
+                },
             )
 
             ExtendedFloatingActionButton(
