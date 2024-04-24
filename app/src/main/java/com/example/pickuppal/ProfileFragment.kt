@@ -3,6 +3,7 @@ package com.example.pickuppal
 import FirebaseAPI
 import PostingDataListCallBack
 import UserStatisticsCallback
+import android.content.Intent
 import android.os.Bundle
 import android.provider.ContactsContract.Profile
 import android.util.Log
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,13 +50,18 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
+import com.google.android.gms.auth.api.identity.Identity
+import kotlinx.coroutines.launch
 import kotlin.math.ceil
 import kotlin.math.floor
 
 class ProfileFragment : Fragment() {
+
     private val args: ProfileFragmentArgs by navArgs()
     private val firebaseAPI = FirebaseAPI()
     private val listItems = mutableListOf<ListingItem>()
@@ -93,6 +100,13 @@ class ProfileFragment : Fragment() {
                                 },
                                 onBackPressed = {
                                     requireActivity().onBackPressedDispatcher.onBackPressed()
+                                },
+                                onLogoutClick = {
+                                    val intent = Intent(requireContext(), MainActivity::class.java)
+                                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    startActivity(intent)
+                                    requireActivity().finish()
+                                    Runtime.getRuntime().exit(0)
                                 }
                             )
                         }
@@ -125,7 +139,9 @@ class ProfileFragment : Fragment() {
         userStatistics: UserStatistics?,
         initialListItems: List<ListingItem>,
         onDeleteClick: (String) -> Unit,
-        onBackPressed: () -> Unit
+        onBackPressed: () -> Unit,
+        onLogoutClick: () -> Unit
+
     ) {
         val listItems = remember { mutableStateListOf<ListingItem>().apply { addAll(initialListItems) } }
         val numItemsPosted = remember { mutableStateOf(userStatistics?.numItemsPosted ?: 0) }
@@ -164,6 +180,17 @@ class ProfileFragment : Fragment() {
                             text = user.username ?: "",
                             style = MaterialTheme.typography.bodyMedium
                         )
+                    }
+                    Button(
+                        onClick = {
+                            lifecycleScope.launch {
+                                onLogoutClick()
+                            }
+                        },
+                        modifier = Modifier
+                            .padding(16.dp)
+                    ) {
+                        Text("Log Out")
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
@@ -238,7 +265,11 @@ class ProfileFragment : Fragment() {
                         )
                     }
                 }
+
+
             }
+
+
         }
     }
 
