@@ -60,6 +60,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -213,7 +214,11 @@ class MapFragment : Fragment() {
         val isMarkerClickPostingDataOpen = remember{ mutableStateOf(false)}
         val postingData = remember{mutableStateOf<PostingData?>(null)}
         var cameraPositionState = rememberCameraPositionState()
-        val filteredPostingDataList = remember { mutableStateOf(postingDataList) }
+        val showClaimedPosts = remember { mutableStateOf(true) }
+        val filteredPostingDataList = remember { mutableStateOf(if (showClaimedPosts.value) postingDataList else postingDataList.filter { !it.claimed }.toMutableList()) }
+
+
+
 
         LaunchedEffect(Unit)
         {
@@ -417,7 +422,8 @@ class MapFragment : Fragment() {
                 isSettingsMenuVisible,
                 onAnimationFinished = {
                     isSettingsMenuAnimationFinished.value = true
-                }
+                },
+                showClaimedPosts
             )
             LaunchedEffect(isSettingsMenuAnimationFinished.value) {
                 if (isSettingsMenuAnimationFinished.value) {
@@ -739,7 +745,8 @@ class MapFragment : Fragment() {
         filteredPostingDataList: MutableState<MutableList<PostingData>>,
         onDismissRequest: () -> Unit,
         isVisible: MutableState<Boolean>,
-        onAnimationFinished: () -> Unit
+        onAnimationFinished: () -> Unit,
+        showClaimedPosts: MutableState<Boolean>
     ) {
         LaunchedEffect(filteredPostingDataList) {
             isVisible.value = true
@@ -864,6 +871,27 @@ class MapFragment : Fragment() {
                                 }
                             }
                         )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = "Show Claimed Posts",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            Switch(
+                                checked = showClaimedPosts.value,
+                                onCheckedChange = { checked ->
+                                    showClaimedPosts.value = checked
+                                    filteredPostingDataList.value = if (showClaimedPosts.value) {
+                                        postingDataList
+                                    } else {
+                                        postingDataList.filter { !it.claimed }.toMutableList()
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
