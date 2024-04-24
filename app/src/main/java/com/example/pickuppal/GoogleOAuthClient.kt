@@ -3,6 +3,7 @@ package com.example.pickuppal
 import android.content.Context
 import android.content.Intent
 import android.content.IntentSender
+import android.util.Log
 import com.google.android.gms.auth.api.identity.BeginSignInRequest
 import com.google.android.gms.auth.api.identity.BeginSignInRequest.GoogleIdTokenRequestOptions
 import com.google.android.gms.auth.api.identity.SignInClient
@@ -20,17 +21,16 @@ class GoogleOAuthClient(
     private val auth = Firebase.auth
     private lateinit var googleSignInClient: GoogleSignInClient
 
-    suspend fun signIn(): IntentSender? {
-        val result = try {
-            oneTapClient.beginSignIn(
-                buildSignInRequest()
-            ).await()
-        } catch(e: Exception) {
+    suspend fun signIn(): Result<IntentSender?> {
+        return try {
+            Log.d("TAG", "HIIII")
+            val result = oneTapClient.beginSignIn(buildSignInRequest()).await()
+            Result.success(result?.pendingIntent?.intentSender)
+        } catch (e: Exception) {
+            Log.d("TAG", "HII")
             e.printStackTrace()
-            if (e is CancellationException) throw e
-            null
+            Result.failure(e)
         }
-        return result?.pendingIntent?.intentSender
     }
 
     suspend fun signInWithIntent(intent: Intent): SignInResult {
@@ -38,6 +38,8 @@ class GoogleOAuthClient(
         val googleIdToken = credential.googleIdToken
         val googleCredentials = GoogleAuthProvider.getCredential(googleIdToken, null)
         return try {
+            Log.d("TAG", "HI")
+
             val user = auth.signInWithCredential(googleCredentials).await().user
             SignInResult(
                 data = user?.run {
@@ -51,6 +53,7 @@ class GoogleOAuthClient(
             )
         } catch (e: Exception) {
             e.printStackTrace()
+            Log.d("TAG", e.toString())
             if (e is CancellationException) throw e
             SignInResult(
                 data = null,
@@ -86,7 +89,6 @@ class GoogleOAuthClient(
                     .setServerClientId(context.getString(R.string.web_client_id))
                     .build()
             )
-            .setAutoSelectEnabled(true)
             .build()
     }
 }
