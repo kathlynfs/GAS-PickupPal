@@ -26,14 +26,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -130,6 +133,8 @@ class MapFragment : Fragment() {
     private var polylineDestination: String? = null
     private val firebaseAPI = FirebaseAPI()
     private lateinit var profilePic: String
+
+    val MAX_CLAIM_DISTANCE = 0.1 // miles
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View
     {
@@ -482,6 +487,11 @@ class MapFragment : Fragment() {
         val postingData = remember { mutableStateOf(initialPostingData) }
         val isOwnItem = postingData.value.userID == user.userId
         val coroutineScope = rememberCoroutineScope()
+        val userLocation = LatLng(currentLocation!!.latitude, currentLocation!!.longitude)
+        val itemLocation = LatLng(postingData.value.lat, postingData.value.lng)
+        val distance = calculateDistance(userLocation, itemLocation)
+
+
 
         LaunchedEffect(initialPostingData) {
             isVisible.value = true
@@ -580,18 +590,28 @@ class MapFragment : Fragment() {
                             modifier = Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Row {
-                                AsyncImage(
-                                    model = postingData.value.photoUrl,
-                                    contentDescription = postingData.value.description,
+                            Row(
+                                modifier = Modifier.fillMaxWidth().height(200.dp).padding(5.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
                                     modifier = Modifier
-                                        .size(200.dp)
-                                        .graphicsLayer(
-                                            rotationZ = 90f
-                                        )
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable(onClick = { shouldMakeImageFullScreen.value = true })
-                                )
+                                        .weight(1f)
+                                        .aspectRatio(1f)
+                                        .padding(end = 16.dp)
+                                ) {
+                                    AsyncImage(
+                                        model = postingData.value.photoUrl,
+                                        contentDescription = postingData.value.description,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .graphicsLayer(rotationZ = 90f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable(onClick = { shouldMakeImageFullScreen.value = true }),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
                                 ExtendedFloatingActionButton(
                                     onClick = { shouldTrackRoute.value = true },
                                     icon = {
@@ -601,8 +621,7 @@ class MapFragment : Fragment() {
                                         )
                                     },
                                     text = { Text(text = "Directions") },
-                                    modifier = Modifier
-                                        .align(Alignment.CenterVertically)
+                                    modifier = Modifier.padding(start = 16.dp)
                                 )
                             }
                         }
@@ -610,13 +629,13 @@ class MapFragment : Fragment() {
                         Text(
                             text = "Claiming",
                             style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.padding(top = 3.dp)
+                            modifier = Modifier.padding(top = 8.dp)
                         )
 
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = 10.dp),
+                                .padding(top = 5.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Button(
@@ -632,13 +651,14 @@ class MapFragment : Fragment() {
                                 modifier = Modifier
                                     .defaultMinSize(minWidth = 56.dp, minHeight = 56.dp)
                                     .padding(4.dp),
-                                enabled = !postingData.value.claimed && !isOwnItem,
+                                enabled = !postingData.value.claimed && !isOwnItem && distance <= MAX_CLAIM_DISTANCE,
                                 shape = CircleShape,
                             ) {
                                 Text(
                                     text = when {
                                         isOwnItem -> "You can't claim your own item!"
                                         postingData.value.claimed -> "Already Claimed"
+                                        distance > MAX_CLAIM_DISTANCE -> "Too far to claim"
                                         else -> "Claim"
                                     }
                                 )
@@ -969,30 +989,6 @@ class MapFragment : Fragment() {
             )
         }
     }
-
-//    @Composable
-//    fun SettingsTextInput(
-//        label: String,
-//        value: MutableState<String>,
-//        onValueChange: (String) -> Unit
-//    ) {
-//        Column(modifier = Modifier.padding(vertical = 8.dp)) {
-//            Text(
-//                text = label,
-//                style = MaterialTheme.typography.bodyLarge
-//            )
-//            OutlinedTextField(
-//                value = value.value,
-//                onValueChange = {
-//                    value.value = it
-//                    onValueChange(it)
-//                },
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .padding(top = 8.dp)
-//            )
-//        }
-//    }
 
     private fun calculateDistance(location1: LatLng, location2: LatLng): Double {
         val earthRadius = 6371.0 // in kilometers
