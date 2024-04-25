@@ -26,14 +26,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -50,6 +53,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DockedSearchBar
@@ -60,15 +64,18 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.BottomCenter
 import androidx.compose.ui.Modifier
@@ -76,6 +83,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -100,6 +108,7 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
 import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
@@ -124,6 +133,8 @@ class MapFragment : Fragment() {
     private var polylineDestination: String? = null
     private val firebaseAPI = FirebaseAPI()
     private lateinit var profilePic: String
+
+    val MAX_CLAIM_DISTANCE = 0.1 // miles
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View
     {
@@ -210,7 +221,9 @@ class MapFragment : Fragment() {
         val isMarkerClickPostingDataOpen = remember{ mutableStateOf(false)}
         val postingData = remember{mutableStateOf<PostingData?>(null)}
         var cameraPositionState = rememberCameraPositionState()
-        val filteredPostingDataList = remember { mutableStateOf(postingDataList) }
+        val showClaimedPosts = remember { mutableStateOf(true) }
+        val filteredPostingDataList = remember { mutableStateOf(if (showClaimedPosts.value) postingDataList else postingDataList.filter { !it.claimed }.toMutableList()) }
+
 
         LaunchedEffect(Unit)
         {
@@ -234,20 +247,16 @@ class MapFragment : Fragment() {
                 position = CameraPosition.fromLatLngZoom(startingLocation, 15f)
             }
         }
+        val properties by remember {
+            mutableStateOf(MapProperties(isMyLocationEnabled = true))
+        }
         Box(modifier = Modifier.fillMaxSize().background(color = Color(0xFFF5F5F5))
         ) {
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
+                properties = properties,
                 cameraPositionState = cameraPositionState,
                 content = {
-                    currentLocation.value?.let { location ->
-                        val userLocation = LatLng(location.latitude, location.longitude)
-                        Circle(
-                            center = userLocation,
-                            radius = 30.0,
-                            fillColor = Color.Blue
-                        )
-                    }
                     filteredPostingDataList.value.forEach{ data ->
                         Marker(
                             state = MarkerState(LatLng(data.lat, data.lng)),
@@ -273,7 +282,7 @@ class MapFragment : Fragment() {
 
                         )
                     }
-                }
+                },
             )
 
             ExtendedFloatingActionButton(
@@ -418,7 +427,8 @@ class MapFragment : Fragment() {
                 isSettingsMenuVisible,
                 onAnimationFinished = {
                     isSettingsMenuAnimationFinished.value = true
-                }
+                },
+                showClaimedPosts
             )
             LaunchedEffect(isSettingsMenuAnimationFinished.value) {
                 if (isSettingsMenuAnimationFinished.value) {
@@ -477,6 +487,11 @@ class MapFragment : Fragment() {
         val postingData = remember { mutableStateOf(initialPostingData) }
         val isOwnItem = postingData.value.userID == user.userId
         val coroutineScope = rememberCoroutineScope()
+        val userLocation = LatLng(currentLocation!!.latitude, currentLocation!!.longitude)
+        val itemLocation = LatLng(postingData.value.lat, postingData.value.lng)
+        val distance = calculateDistance(userLocation, itemLocation)
+
+
 
         LaunchedEffect(initialPostingData) {
             isVisible.value = true
@@ -525,7 +540,7 @@ class MapFragment : Fragment() {
                         .height(500.dp)
                         .fillMaxWidth()
                         .clickable(enabled = false) {},
-                    shape = RectangleShape,
+                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
                     )
@@ -536,117 +551,157 @@ class MapFragment : Fragment() {
                             .padding(16.dp)
                     ) {
                         Text(
+                            text = "Title",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 1.dp)
+                        )
+                        Text(
                             text = postingData.value.title,
                             style = MaterialTheme.typography.headlineMedium,
-                            modifier = Modifier.padding(bottom = 16.dp)
+                            modifier = Modifier.padding(bottom = 5.dp)
+                        )
+                        Text(
+                            text = "Location",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 1.dp)
                         )
                         Text(
                             text = postingData.value.location,
                             style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(bottom = 16.dp)
+                            modifier = Modifier.padding(bottom = 5.dp)
+                        )
+                        Text(
+                            text = "Description",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 1.dp)
                         )
                         Text(
                             text = postingData.value.description,
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(bottom = 16.dp)
+                            modifier = Modifier.padding(bottom = 5.dp)
+                        )
+
+                        Text(
+                            text = "Image & Directions",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 1.dp)
+                        )
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().height(200.dp).padding(5.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .aspectRatio(1f)
+                                        .padding(end = 16.dp)
+                                ) {
+                                    AsyncImage(
+                                        model = postingData.value.photoUrl,
+                                        contentDescription = postingData.value.description,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .graphicsLayer(rotationZ = 90f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable(onClick = { shouldMakeImageFullScreen.value = true }),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                                ExtendedFloatingActionButton(
+                                    onClick = { shouldTrackRoute.value = true },
+                                    icon = {
+                                        Icon(
+                                            Icons.Filled.Place,
+                                            "Extended floating action button."
+                                        )
+                                    },
+                                    text = { Text(text = "Directions") },
+                                    modifier = Modifier.padding(start = 16.dp)
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "Claiming",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(top = 8.dp)
                         )
 
                         Row(
                             modifier = Modifier
-                                .align(Alignment.End)
+                                .fillMaxWidth()
+                                .padding(top = 5.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            // want to add ability to click on image and have it show up full screen
-                            AsyncImage(
-                                model = postingData.value.photoUrl,
-                                contentDescription = postingData.value.description,
-                                modifier = Modifier
-                                    .size(200.dp)
-                                    .graphicsLayer(
-                                        rotationZ = 90f
-                                    )
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable(onClick = { shouldMakeImageFullScreen.value = true })
-                            )
-
-                            Spacer(modifier = Modifier.weight(1f))
-
-                            ExtendedFloatingActionButton(
-                                onClick = { shouldTrackRoute.value = true },
-                                icon = {
-                                    Icon(
-                                        Icons.Filled.Place,
-                                        "Extended floating action button."
-                                    )
+                            Button(
+                                onClick = {
+                                    if (!isOwnItem) {
+                                        coroutineScope.launch {
+                                            postingRef.child("claimed").setValue(true).await()
+                                            postingRef.child("claimedBy").setValue(user.userId).await()
+                                        }
+                                        firebaseAPI.claimItem(user)
+                                    }
                                 },
-                                text = { Text(text = "Directions") },
                                 modifier = Modifier
-                                    .align(Alignment.Bottom)
-                            )
-                        }
-
-                        Button(
-                            onClick = {
-                                if (!isOwnItem) {
-                                    coroutineScope.launch {
-                                        postingRef.child("claimed").setValue(true).await()
-                                        postingRef.child("claimedBy").setValue(user.userId).await()
-                                    }
-                                    firebaseAPI.claimItem(user)
-                                }
-                            },
-                            modifier = Modifier.defaultMinSize(minWidth = 56.dp, minHeight = 56.dp),
-                            enabled = !postingData.value.claimed && !isOwnItem,
-                            shape = CircleShape
-
-                        ) {
-                            Text(
-                                text = when {
-                                    isOwnItem -> "You can't claim your own item!"
-                                    postingData.value.claimed -> "Already Claimed"
-                                    else -> "Claim"
-                                }
-                            )
-                        }
-
-                        if (postingData.value.claimedBy == user.userId) {
-                            if (postingData.value.rating == 0) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(top = 16.dp)
-                                ) {
-                                    Text(
-                                        text = "Rate the item:",
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    repeat(5) { index ->
-                                        Icon(
-                                            imageVector = if (postingData.value.rating >= index + 1) Icons.Filled.Star else Icons.Outlined.Star,
-                                            contentDescription = null,
-                                            modifier = Modifier
-                                                .size(24.dp)
-                                                .clickable {
-                                                    val newRating = index + 1
-                                                    coroutineScope.launch {
-                                                        postingRef.child("rating")
-                                                            .setValue(newRating).await()
-                                                        postingData.value.rating = newRating
-                                                    }
-                                                    firebaseAPI.submitRating(
-                                                        postingData.value,
-                                                        newRating
-                                                    )
-                                                }
-                                        )
-                                    }
-                                }
-
-                            } else {
+                                    .defaultMinSize(minWidth = 56.dp, minHeight = 56.dp)
+                                    .padding(4.dp),
+                                enabled = !postingData.value.claimed && !isOwnItem && distance <= MAX_CLAIM_DISTANCE,
+                                shape = CircleShape,
+                            ) {
                                 Text(
-                                    text = "You have already submitted a rating for this item.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.padding(top = 16.dp)
+                                    text = when {
+                                        isOwnItem -> "You can't claim your own item!"
+                                        postingData.value.claimed -> "Already Claimed"
+                                        distance > MAX_CLAIM_DISTANCE -> "Too far to claim"
+                                        else -> "Claim"
+                                    }
                                 )
+                            }
+
+                            if (postingData.value.claimedBy == user.userId) {
+                                if (postingData.value.rating == 0) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Rating:",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        repeat(5) { index ->
+                                            Icon(
+                                                imageVector = if (postingData.value.rating >= index + 1) Icons.Filled.Star else Icons.Outlined.Star,
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .clickable {
+                                                        val newRating = index + 1
+                                                        coroutineScope.launch {
+                                                            postingRef.child("rating")
+                                                                .setValue(newRating).await()
+                                                            postingData.value.rating = newRating
+                                                        }
+                                                        firebaseAPI.submitRating(
+                                                            postingData.value,
+                                                            newRating
+                                                        )
+                                                    }
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    Text(
+                                        text = "You have already submitted a rating for this item.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.padding(start = 16.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -708,29 +763,40 @@ class MapFragment : Fragment() {
 
     // will improve appearance of this in future
     @Composable
-    fun MakeImageFullscreen(postingData: PostingData, onDismissRequest: () -> Unit)
-    {
+    fun MakeImageFullscreen(postingData: PostingData, onDismissRequest: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-        ){
+        ) {
             Card(
                 modifier = Modifier
                     .fillMaxSize(),
                 shape = RectangleShape,
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface)) {
-                ExtendedFloatingActionButton(
-                    onClick = { onDismissRequest()},
-                    modifier = Modifier.align(Alignment.End)
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
-                {
-                    Text(text = "Done")
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                ) {
+                    AsyncImage(
+                        model = postingData.photoUrl,
+                        contentDescription = postingData.description,
+                        modifier = Modifier
+                            .graphicsLayer( rotationZ = 90f )
+                            .fillMaxSize(),
+                        contentScale = ContentScale.FillWidth
+                    )
+                    ExtendedFloatingActionButton(
+                        onClick = { onDismissRequest() },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(16.dp)
+                    ) {
+                        Text(text = "Done")
+                    }
                 }
-                AsyncImage(
-                    model = postingData.photoUrl,
-                    contentDescription = postingData.description,
-                )
             }
         }
     }
@@ -740,7 +806,8 @@ class MapFragment : Fragment() {
         filteredPostingDataList: MutableState<MutableList<PostingData>>,
         onDismissRequest: () -> Unit,
         isVisible: MutableState<Boolean>,
-        onAnimationFinished: () -> Unit
+        onAnimationFinished: () -> Unit,
+        showClaimedPosts: MutableState<Boolean>
     ) {
         LaunchedEffect(filteredPostingDataList) {
             isVisible.value = true
@@ -865,6 +932,27 @@ class MapFragment : Fragment() {
                                 }
                             }
                         )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = "Show Claimed Posts",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            Switch(
+                                checked = showClaimedPosts.value,
+                                onCheckedChange = { checked ->
+                                    showClaimedPosts.value = checked
+                                    filteredPostingDataList.value = if (showClaimedPosts.value) {
+                                        postingDataList
+                                    } else {
+                                        postingDataList.filter { !it.claimed }.toMutableList()
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -901,30 +989,6 @@ class MapFragment : Fragment() {
             )
         }
     }
-
-//    @Composable
-//    fun SettingsTextInput(
-//        label: String,
-//        value: MutableState<String>,
-//        onValueChange: (String) -> Unit
-//    ) {
-//        Column(modifier = Modifier.padding(vertical = 8.dp)) {
-//            Text(
-//                text = label,
-//                style = MaterialTheme.typography.bodyLarge
-//            )
-//            OutlinedTextField(
-//                value = value.value,
-//                onValueChange = {
-//                    value.value = it
-//                    onValueChange(it)
-//                },
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .padding(top = 8.dp)
-//            )
-//        }
-//    }
 
     private fun calculateDistance(location1: LatLng, location2: LatLng): Double {
         val earthRadius = 6371.0 // in kilometers

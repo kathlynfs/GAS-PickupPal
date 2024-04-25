@@ -1,6 +1,7 @@
 package com.example.pickuppal
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -68,10 +69,20 @@ class SignInFragment : Fragment() {
                 SignInScreen(
                     onSignInClick = {
                         lifecycleScope.launch {
-                            val signInIntent = googleOAuthClient.signIn()
-                            launcher.launch(
-                                IntentSenderRequest.Builder(signInIntent ?: return@launch).build()
-                            )
+                            val signInResult = googleOAuthClient.signIn()
+                            if (signInResult.isSuccess) {
+                                val signInIntent = signInResult.getOrNull()
+                                if (signInIntent != null) {
+                                    launcher.launch(IntentSenderRequest.Builder(signInIntent).build())
+                                }
+                            } else {
+                                Toast.makeText(
+                                    requireContext(),
+                                    "This app uses OneTap. Please connect a Google account to your device.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+
                         }
                     },
                     onSignInSuccess = { userData ->
