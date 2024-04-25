@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DockedSearchBar
@@ -79,6 +80,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -216,8 +218,6 @@ class MapFragment : Fragment() {
         var cameraPositionState = rememberCameraPositionState()
         val showClaimedPosts = remember { mutableStateOf(true) }
         val filteredPostingDataList = remember { mutableStateOf(if (showClaimedPosts.value) postingDataList else postingDataList.filter { !it.claimed }.toMutableList()) }
-
-
 
 
         LaunchedEffect(Unit)
@@ -530,7 +530,7 @@ class MapFragment : Fragment() {
                         .height(500.dp)
                         .fillMaxWidth()
                         .clickable(enabled = false) {},
-                    shape = RectangleShape,
+                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
                     )
@@ -541,117 +541,147 @@ class MapFragment : Fragment() {
                             .padding(16.dp)
                     ) {
                         Text(
+                            text = "Title",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 1.dp)
+                        )
+                        Text(
                             text = postingData.value.title,
                             style = MaterialTheme.typography.headlineMedium,
-                            modifier = Modifier.padding(bottom = 16.dp)
+                            modifier = Modifier.padding(bottom = 5.dp)
+                        )
+                        Text(
+                            text = "Location",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 1.dp)
                         )
                         Text(
                             text = postingData.value.location,
                             style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(bottom = 16.dp)
+                            modifier = Modifier.padding(bottom = 5.dp)
+                        )
+                        Text(
+                            text = "Description",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 1.dp)
                         )
                         Text(
                             text = postingData.value.description,
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(bottom = 16.dp)
+                            modifier = Modifier.padding(bottom = 5.dp)
+                        )
+
+                        Text(
+                            text = "Image & Directions",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 1.dp)
+                        )
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row {
+                                AsyncImage(
+                                    model = postingData.value.photoUrl,
+                                    contentDescription = postingData.value.description,
+                                    modifier = Modifier
+                                        .size(200.dp)
+                                        .graphicsLayer(
+                                            rotationZ = 90f
+                                        )
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable(onClick = { shouldMakeImageFullScreen.value = true })
+                                )
+                                ExtendedFloatingActionButton(
+                                    onClick = { shouldTrackRoute.value = true },
+                                    icon = {
+                                        Icon(
+                                            Icons.Filled.Place,
+                                            "Extended floating action button."
+                                        )
+                                    },
+                                    text = { Text(text = "Directions") },
+                                    modifier = Modifier
+                                        .align(Alignment.CenterVertically)
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "Claiming",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(top = 3.dp)
                         )
 
                         Row(
                             modifier = Modifier
-                                .align(Alignment.End)
+                                .fillMaxWidth()
+                                .padding(top = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            // want to add ability to click on image and have it show up full screen
-                            AsyncImage(
-                                model = postingData.value.photoUrl,
-                                contentDescription = postingData.value.description,
-                                modifier = Modifier
-                                    .size(200.dp)
-                                    .graphicsLayer(
-                                        rotationZ = 90f
-                                    )
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable(onClick = { shouldMakeImageFullScreen.value = true })
-                            )
-
-                            Spacer(modifier = Modifier.weight(1f))
-
-                            ExtendedFloatingActionButton(
-                                onClick = { shouldTrackRoute.value = true },
-                                icon = {
-                                    Icon(
-                                        Icons.Filled.Place,
-                                        "Extended floating action button."
-                                    )
+                            Button(
+                                onClick = {
+                                    if (!isOwnItem) {
+                                        coroutineScope.launch {
+                                            postingRef.child("claimed").setValue(true).await()
+                                            postingRef.child("claimedBy").setValue(user.userId).await()
+                                        }
+                                        firebaseAPI.claimItem(user)
+                                    }
                                 },
-                                text = { Text(text = "Directions") },
                                 modifier = Modifier
-                                    .align(Alignment.Bottom)
-                            )
-                        }
-
-                        Button(
-                            onClick = {
-                                if (!isOwnItem) {
-                                    coroutineScope.launch {
-                                        postingRef.child("claimed").setValue(true).await()
-                                        postingRef.child("claimedBy").setValue(user.userId).await()
-                                    }
-                                    firebaseAPI.claimItem(user)
-                                }
-                            },
-                            modifier = Modifier.defaultMinSize(minWidth = 56.dp, minHeight = 56.dp),
-                            enabled = !postingData.value.claimed && !isOwnItem,
-                            shape = CircleShape
-
-                        ) {
-                            Text(
-                                text = when {
-                                    isOwnItem -> "You can't claim your own item!"
-                                    postingData.value.claimed -> "Already Claimed"
-                                    else -> "Claim"
-                                }
-                            )
-                        }
-
-                        if (postingData.value.claimedBy == user.userId) {
-                            if (postingData.value.rating == 0) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(top = 16.dp)
-                                ) {
-                                    Text(
-                                        text = "Rate the item:",
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    repeat(5) { index ->
-                                        Icon(
-                                            imageVector = if (postingData.value.rating >= index + 1) Icons.Filled.Star else Icons.Outlined.Star,
-                                            contentDescription = null,
-                                            modifier = Modifier
-                                                .size(24.dp)
-                                                .clickable {
-                                                    val newRating = index + 1
-                                                    coroutineScope.launch {
-                                                        postingRef.child("rating")
-                                                            .setValue(newRating).await()
-                                                        postingData.value.rating = newRating
-                                                    }
-                                                    firebaseAPI.submitRating(
-                                                        postingData.value,
-                                                        newRating
-                                                    )
-                                                }
-                                        )
-                                    }
-                                }
-
-                            } else {
+                                    .defaultMinSize(minWidth = 56.dp, minHeight = 56.dp)
+                                    .padding(4.dp),
+                                enabled = !postingData.value.claimed && !isOwnItem,
+                                shape = CircleShape,
+                            ) {
                                 Text(
-                                    text = "You have already submitted a rating for this item.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.padding(top = 16.dp)
+                                    text = when {
+                                        isOwnItem -> "You can't claim your own item!"
+                                        postingData.value.claimed -> "Already Claimed"
+                                        else -> "Claim"
+                                    }
                                 )
+                            }
+
+                            if (postingData.value.claimedBy == user.userId) {
+                                if (postingData.value.rating == 0) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Rating:",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        repeat(5) { index ->
+                                            Icon(
+                                                imageVector = if (postingData.value.rating >= index + 1) Icons.Filled.Star else Icons.Outlined.Star,
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .clickable {
+                                                        val newRating = index + 1
+                                                        coroutineScope.launch {
+                                                            postingRef.child("rating")
+                                                                .setValue(newRating).await()
+                                                            postingData.value.rating = newRating
+                                                        }
+                                                        firebaseAPI.submitRating(
+                                                            postingData.value,
+                                                            newRating
+                                                        )
+                                                    }
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    Text(
+                                        text = "You have already submitted a rating for this item.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.padding(start = 16.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -713,29 +743,40 @@ class MapFragment : Fragment() {
 
     // will improve appearance of this in future
     @Composable
-    fun MakeImageFullscreen(postingData: PostingData, onDismissRequest: () -> Unit)
-    {
+    fun MakeImageFullscreen(postingData: PostingData, onDismissRequest: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-        ){
+        ) {
             Card(
                 modifier = Modifier
                     .fillMaxSize(),
                 shape = RectangleShape,
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface)) {
-                ExtendedFloatingActionButton(
-                    onClick = { onDismissRequest()},
-                    modifier = Modifier.align(Alignment.End)
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
-                {
-                    Text(text = "Done")
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                ) {
+                    AsyncImage(
+                        model = postingData.photoUrl,
+                        contentDescription = postingData.description,
+                        modifier = Modifier
+                            .graphicsLayer( rotationZ = 90f )
+                            .fillMaxSize(),
+                        contentScale = ContentScale.FillWidth
+                    )
+                    ExtendedFloatingActionButton(
+                        onClick = { onDismissRequest() },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(16.dp)
+                    ) {
+                        Text(text = "Done")
+                    }
                 }
-                AsyncImage(
-                    model = postingData.photoUrl,
-                    contentDescription = postingData.description,
-                )
             }
         }
     }
