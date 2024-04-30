@@ -2,6 +2,7 @@ package com.example.pickuppal
 
 import FirebaseAPI
 import android.content.ContentValues
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
@@ -76,14 +77,17 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import java.util.UUID
 import coil.request.ImageRequest
-
+import com.google.firebase.storage.StorageReference
 
 
 class PostingFragment : Fragment() {
     private val args: PostingFragmentArgs by navArgs()
+    private val mutablePhotoUrl: MutableLiveData<String?> = MutableLiveData(null)
+    private val photoUrl: LiveData<String?> = mutablePhotoUrl
     private val mutablePhotoUri: MutableLiveData<Uri?> = MutableLiveData(null)
     private var photoUri: LiveData<Uri?> = mutablePhotoUri
     private var photoName: String? = null
+    private var prevPhotoName: String? = null
     private var photoFile: File? = null
 
     override fun onCreateView(
@@ -97,6 +101,11 @@ class PostingFragment : Fragment() {
                 PostingContent(
                     user = user,
                     onBackPressed = {
+                        // if the user doesn't post, delete the image
+                        if (prevPhotoName != null) {
+                            val firebaseAPI = FirebaseAPI()
+                            firebaseAPI.deleteImage(prevPhotoName.toString())
+                        }
                         requireActivity().onBackPressedDispatcher.onBackPressed()
                     }
                 )
@@ -110,7 +119,8 @@ class PostingFragment : Fragment() {
     ) { didTakePhoto ->
         if (didTakePhoto && photoName != null) {
             mutablePhotoUri.value = Uri.fromFile(File(requireContext().filesDir, photoName!!))
-            Log.d("TakePhotoCallback", "photoUri: $photoUri")
+            //Log.d("TakePhotoCallback", "photoUri: $photoUri")
+            uploadImageToFirebase()
         } else {
             Toast.makeText(requireContext(), "Photo capture failed", Toast.LENGTH_SHORT).show()
         }
@@ -135,6 +145,30 @@ class PostingFragment : Fragment() {
         }
     }
 
+    private fun getAnnotations(photoName: String) {
+        val firebaseAPI = FirebaseAPI()
+
+        firebaseAPI.getLabels(photoName, maxResults = 5)
+            .addOnCompleteListener { task ->
+                Log.d("Posting", "Task is successful: ${task.isSuccessful}")
+                if (task.isSuccessful) {
+                    if (task.result != null) {
+                        val labels = mutableListOf<String>()
+                        val labelAnnotations =
+                            task.result!!.asJsonArray[0].asJsonObject["labelAnnotations"].asJsonArray
+                        for (label in labelAnnotations) {
+                            val labelObj = label.asJsonObject
+                            val description = labelObj["description"].asString
+                            val confidence = labelObj["score"].asDouble
+                            Log.d("getLabels", "image annotations: $labels ($confidence)")
+                            labels.add(description)
+                        }
+                    }
+                } else {
+                    Log.e("GetLabels", "Failed to get labels", task.exception)
+                }
+            }
+    }
 
 
     @Composable
@@ -411,14 +445,41 @@ class PostingFragment : Fragment() {
         )
     }
 
-    private fun onPostClicked(title : String, location : String, user : UserData, description : String, navController : NavController) {
+    private fun uploadImageToFirebase() {
         val photoUri = mutablePhotoUri.value
-        if (hasRequiredInputs(title, location, photoUri)) {
+        val firebaseAPI = FirebaseAPI()
+
+        // if photoUrl was not null, then an image was added before
+        // delete that image before adding a new one
+        if (prevPhotoName != null) {
+            firebaseAPI.deleteImage(prevPhotoName.toString())
+        }
+
+        photoUri?.let {uri ->
+            val bitmap = BitmapFactory.decodeStream(context?.contentResolver?.openInputStream(uri))
+            val name:String = photoName?: "defaultphotoname"
+            firebaseAPI.uploadImage(bitmap, name) { url ->
+                if (url != null) {
+                    mutablePhotoUrl.value = url
+                    prevPhotoName = name
+                    getAnnotations(name)
+                }  else {
+                    Toast.makeText(
+                        context,
+                        "Error when uploading. Please take the picture again.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
+
+    private fun onPostClicked(title : String, location : String, user : UserData, description : String, navController : NavController) {
+        val photoUrl = mutablePhotoUrl.value
+        if (hasRequiredInputs(title, location, photoUrl)) {
             val firebaseAPI = FirebaseAPI()
-            photoUri?.let { uri ->
-                val bitmap = BitmapFactory.decodeStream(context?.contentResolver?.openInputStream(uri))
+            photoUrl?.let { url ->
                 val id = UUID.randomUUID().toString()
-                val name:String = photoName?: "defaultphotoname"
 
                 // geocoding address to lat + long
                 lifecycleScope.launch {
@@ -442,33 +503,24 @@ class PostingFragment : Fragment() {
                                 Log.d(ContentValues.TAG, "Lat: $lat")
                                 Log.d(ContentValues.TAG, "Lat: $lng")
 
-                                firebaseAPI.uploadImage(bitmap, name) { imageUrl ->
-                                    if (imageUrl != null) {
-                                        val data = PostingData(
-                                            postID = id,
-                                            userID = user.userId,
-                                            title = title,
-                                            location = location,
-                                            lat = lat,
-                                            lng = lng,
-                                            reverseGeocodedAddress = reverseGeocodedAddress,
-                                            description = description,
-                                            claimed = false,
-                                            photoUrl = imageUrl,
-                                            claimedBy = "",
-                                            rating = 0,
-                                        )
-                                        firebaseAPI.uploadPostingData(data, user)
-                                        navController.popBackStack()
 
-                                    } else {
-                                        Toast.makeText(
-                                            context,
-                                            "Error. Please try again.",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                }
+                                val data = PostingData(
+                                    postID = id,
+                                    userID = user.userId,
+                                    title = title,
+                                    location = location,
+                                    lat = lat,
+                                    lng = lng,
+                                    reverseGeocodedAddress = reverseGeocodedAddress,
+                                    description = description,
+                                    claimed = false,
+                                    photoUrl = url,
+                                    claimedBy = "",
+                                    rating = 0,
+                                    )
+                                firebaseAPI.uploadPostingData(data, user)
+                                navController.popBackStack()
+
                             }
                             catch(ex: Exception)
                             {
@@ -491,8 +543,8 @@ class PostingFragment : Fragment() {
         }
     }
 
-    private fun hasRequiredInputs(title : String, location : String, uri : Uri?): Boolean {
-        return title.isNotBlank() && location.isNotBlank() && uri != null
+    private fun hasRequiredInputs(title : String, location : String, url : String?): Boolean {
+        return title.isNotBlank() && location.isNotBlank() && url != null
     }
 
     @Composable
@@ -562,6 +614,28 @@ class PostingFragment : Fragment() {
                 )
             }
         }
+    }
+
+    //https://firebase.google.com/docs/ml/android/label-images
+    private fun scaleBitmapDown(bitmap: Bitmap): Bitmap {
+        val maxDimension = 640
+        val originalWidth = bitmap.width
+        val originalHeight = bitmap.height
+        var resizedWidth = 640
+        var resizedHeight = 480
+        if (originalHeight > originalWidth) {
+            resizedHeight = maxDimension
+            resizedWidth =
+                (resizedHeight * originalWidth.toFloat() / originalHeight.toFloat()).toInt()
+        } else if (originalWidth > originalHeight) {
+            resizedWidth = maxDimension
+            resizedHeight =
+                (resizedWidth * originalHeight.toFloat() / originalWidth.toFloat()).toInt()
+        } else if (originalHeight == originalWidth) {
+            resizedHeight = maxDimension
+            resizedWidth = maxDimension
+        }
+        return Bitmap.createScaledBitmap(bitmap, resizedWidth, resizedHeight, false)
     }
 
 

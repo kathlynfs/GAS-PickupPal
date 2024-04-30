@@ -125,4 +125,6 @@ dependencies {
     implementation("com.squareup.moshi:moshi:1.8.0")
     implementation("io.coil-kt:coil-compose:2.2.2")
     implementation("com.google.maps.android:maps-compose:4.3.3")
+    implementation("com.google.firebase:firebase-functions:20.4.0")
+    implementation("com.google.code.gson:gson:2.10")
 }

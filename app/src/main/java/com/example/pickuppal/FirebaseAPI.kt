@@ -1,11 +1,11 @@
+import android.R.attr
 import android.graphics.Bitmap
+import android.util.Base64
 import android.util.Log
-import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.findViewTreeViewModelStoreOwner
 import com.example.pickuppal.PostingData
 import com.example.pickuppal.UserData
 import com.example.pickuppal.UserStatistics
+import com.google.android.gms.tasks.Task
 import com.google.firebase.Firebase
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -14,15 +14,22 @@ import com.google.firebase.database.MutableData
 import com.google.firebase.database.Transaction
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.database
+import com.google.firebase.functions.functions
 import com.google.firebase.storage.storage
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.runBlocking
+import com.google.gson.Gson
+import com.google.gson.JsonArray
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+import com.google.gson.JsonPrimitive
 import java.io.ByteArrayOutputStream
+
 
 class FirebaseAPI {
 
     private val TAG = "firebaseAPI"
     private val db = Firebase.database.reference
+    private val functions = Firebase.functions
 
     fun getDB(): DatabaseReference {
         return db
@@ -90,6 +97,66 @@ class FirebaseAPI {
             }
         })
 
+    }
+
+    fun deleteImage(imageName: String) {
+
+        val storage = Firebase.storage
+        val storageRef = storage.reference
+
+        val desertRef = storageRef.child("images/" + imageName)
+
+        desertRef.delete()
+            .addOnSuccessListener {
+                Log.d(TAG, "$imageName deleted")
+            }
+            .addOnFailureListener { exception ->
+                Log.e(TAG, "Error deleting image: ${exception.message}")
+            }
+    }
+
+    //https://firebase.google.com/docs/ml/android/label-images#kotlin+ktx_2
+    private fun getLabelDetectionJsonRequest(imageName: String, maxResults: Int) : JsonObject {
+        val imageUri = "gs://pickuppal-e450c.appspot.com/images/$imageName"
+        val request = JsonObject()
+
+        // Add image to request
+        val image = JsonObject()
+        val source = JsonObject()
+        source.add("gcsImageUri", JsonPrimitive(imageUri))
+        image.add("source", source)
+        request.add("image", image)
+
+        // Add features to the request
+        val feature = JsonObject()
+        feature.add("maxResults", JsonPrimitive(maxResults))
+        feature.add("type", JsonPrimitive("LABEL_DETECTION"))
+        val features = JsonArray()
+        features.add(feature)
+        request.add("features", features)
+
+        val requestsArray = JsonArray()
+        requestsArray.add(request)
+
+        val toReturn =JsonObject()
+        toReturn.add("requests", requestsArray)
+
+        return toReturn
+    }
+
+    // https://stackoverflow.com/questions/50138130/firebase-passing-data-to-cloudfunction-results-in-object-cannot-be-encoded-in
+    fun getLabels(imageUrl: String, maxResults: Int): Task<JsonElement> {
+        val requestJson = getLabelDetectionJsonRequest(imageUrl, maxResults)
+        val requestMap = Gson().fromJson(requestJson, Map::class.java) as Map<String, Any>
+
+
+        return functions
+            .getHttpsCallable("imageLabels")
+            .call(requestMap)
+            .continueWith { task ->
+                val result = task.result?.data
+                JsonParser.parseString(Gson().toJson(result))
+            }
     }
 
     fun uploadImage(bitmap: Bitmap, imageName: String, callback: (String?) -> Unit) {
