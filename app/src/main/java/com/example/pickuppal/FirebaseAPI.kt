@@ -25,11 +25,12 @@ import com.google.gson.JsonPrimitive
 import java.io.ByteArrayOutputStream
 
 
+
 class FirebaseAPI {
 
     private val TAG = "firebaseAPI"
     private val db = Firebase.database.reference
-    private val functions = Firebase.functions
+
 
     fun getDB(): DatabaseReference {
         return db
@@ -112,57 +113,6 @@ class FirebaseAPI {
             }
             .addOnFailureListener { exception ->
                 Log.e(TAG, "Error deleting image: ${exception.message}")
-            }
-    }
-
-    //https://firebase.google.com/docs/ml/android/label-images#kotlin+ktx_2
-    private fun getLabelDetectionJsonRequest(imageName: String, maxResults: Int) : JsonObject {
-        val imageUri = "gs://pickuppal-e450c.appspot.com/images/$imageName"
-        val request = JsonObject()
-
-        // Add image to request
-        val image = JsonObject()
-        val source = JsonObject()
-        source.add("gcsImageUri", JsonPrimitive(imageUri))
-        image.add("source", source)
-        request.add("image", image)
-
-        // Add features to the request
-        val feature = JsonObject()
-        feature.add("maxResults", JsonPrimitive(maxResults))
-        feature.add("type", JsonPrimitive("LABEL_DETECTION"))
-        val features = JsonArray()
-        features.add(feature)
-        request.add("features", features)
-
-        val requestsArray = JsonArray()
-        requestsArray.add(request)
-
-        val toReturn =JsonObject()
-        toReturn.add("requests", requestsArray)
-
-        return toReturn
-    }
-
-    fun getLabels(imageUrl: String, maxResults: Int, onComplete: (List<String>) -> Unit) {
-        val requestJson = getLabelDetectionJsonRequest(imageUrl, maxResults).toString()
-
-        functions.getHttpsCallable("labelImage")
-            .call(requestJson)
-            .addOnSuccessListener { task ->
-                val labels = mutableListOf<String>()
-                val labelAnnotations = task.result?.data
-                labelAnnotations?.forEach { label ->
-                    val description = label.asJsonObject["description"].asString
-                    val confidence = label.asJsonObject["score"].asDouble
-                    Log.d("getLabels", "image annotations: $description ($confidence)")
-                    labels.add(description)
-                }
-                onComplete(labels)
-            }
-            .addOnFailureListener { exception ->
-                Log.e("getLabels", "Failed to get labels", exception)
-                onComplete(emptyList()) // Handle failure by returning an empty list
             }
     }
 

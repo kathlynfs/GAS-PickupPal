@@ -78,12 +78,13 @@ import coil.compose.rememberAsyncImagePainter
 import java.util.UUID
 import coil.request.ImageRequest
 import com.google.firebase.storage.StorageReference
+import com.google.gson.Gson
+import com.google.gson.JsonArray
 
 
 class PostingFragment : Fragment() {
     private val args: PostingFragmentArgs by navArgs()
     private val mutablePhotoUrl: MutableLiveData<String?> = MutableLiveData(null)
-    private val photoUrl: LiveData<String?> = mutablePhotoUrl
     private val mutablePhotoUri: MutableLiveData<Uri?> = MutableLiveData(null)
     private var photoUri: LiveData<Uri?> = mutablePhotoUri
     private var photoName: String? = null
@@ -146,12 +147,33 @@ class PostingFragment : Fragment() {
     }
 
     private fun getAnnotations(photoName: String) {
-        val firebaseAPI = FirebaseAPI()
-
-        firebaseAPI.getLabels(photoName, maxResults = 5) { labels ->
-            Log.d("Posting", "Received labels: $labels")
-            // Now you can use the labels here
-        }
+        val imageLabelling = ImageLabelling()
+        imageLabelling.getLabels(photoName, maxResults = 10)
+            .addOnSuccessListener { httpsCallableResult ->
+                try {
+                    val gson = Gson()
+                    val data = httpsCallableResult.data
+                    if (data != null) {
+                        val jsonString = gson.toJson(data)
+                        val labelAnnotations = gson.fromJson(jsonString, JsonArray::class.java)
+                        val labels = mutableListOf<String>()
+                        for (label in labelAnnotations) {
+                            val labelObj = label.asJsonObject
+                            val description = labelObj["description"].asString
+                            val confidence = labelObj["score"].asDouble
+                            Log.d("getLabels", "image annotations: $description ($confidence)")
+                            labels.add(description)
+                        }
+                    } else {
+                        Log.e("GetLabels", "Invalid data format received")
+                    }
+                } catch (e: Exception) {
+                    Log.e("GetLabels", "Error parsing response data", e)
+                }
+            }
+            .addOnFailureListener { exception ->
+                Log.e("GetLabels", "Failed to get labels", exception)
+            }
     }
 
 
