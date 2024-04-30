@@ -151,7 +151,7 @@ class PostingFragment : Fragment() {
         firebaseAPI.getLabels(photoName, maxResults = 5)
             .addOnCompleteListener { task ->
                 Log.d("Posting", "Task is successful: ${task.isSuccessful}")
-                if (task.isSuccessful) {
+                if (task.isSuccessful()) {
                     if (task.result != null) {
                         val labels = mutableListOf<String>()
                         val labelAnnotations =

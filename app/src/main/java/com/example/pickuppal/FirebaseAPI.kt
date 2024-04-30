@@ -144,15 +144,12 @@ class FirebaseAPI {
         return toReturn
     }
 
-    // https://stackoverflow.com/questions/50138130/firebase-passing-data-to-cloudfunction-results-in-object-cannot-be-encoded-in
     fun getLabels(imageUrl: String, maxResults: Int): Task<JsonElement> {
-        val requestJson = getLabelDetectionJsonRequest(imageUrl, maxResults)
-        val requestMap = Gson().fromJson(requestJson, Map::class.java) as Map<String, Any>
-
+        val requestJson = getLabelDetectionJsonRequest(imageUrl, maxResults).toString()
 
         return functions
-            .getHttpsCallable("imageLabels")
-            .call(requestMap)
+            .getHttpsCallable("labelImage")
+            .call(requestJson)
             .continueWith { task ->
                 val result = task.result?.data
                 JsonParser.parseString(Gson().toJson(result))
@@ -170,7 +167,7 @@ class FirebaseAPI {
         val data = baos.toByteArray()
         val uploadTask = imageRef.putBytes(data)
 
-        uploadTask.addOnSuccessListener { taskSnapshot ->
+        uploadTask.addOnSuccessListener { _ ->
             imageRef.downloadUrl.addOnSuccessListener { uri ->
                 val imageUrl = uri.toString()
                 Log.d(TAG, "Image uploaded successfully. URL: $imageUrl")
