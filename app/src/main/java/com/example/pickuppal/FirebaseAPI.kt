@@ -144,17 +144,28 @@ class FirebaseAPI {
         return toReturn
     }
 
-    fun getLabels(imageUrl: String, maxResults: Int): Task<JsonElement> {
+    fun getLabels(imageUrl: String, maxResults: Int, onComplete: (List<String>) -> Unit) {
         val requestJson = getLabelDetectionJsonRequest(imageUrl, maxResults).toString()
 
-        return functions
-            .getHttpsCallable("labelImage")
+        functions.getHttpsCallable("labelImage")
             .call(requestJson)
-            .continueWith { task ->
-                val result = task.result?.data
-                JsonParser.parseString(Gson().toJson(result))
+            .addOnSuccessListener { task ->
+                val labels = mutableListOf<String>()
+                val labelAnnotations = task.result?.data
+                labelAnnotations?.forEach { label ->
+                    val description = label.asJsonObject["description"].asString
+                    val confidence = label.asJsonObject["score"].asDouble
+                    Log.d("getLabels", "image annotations: $description ($confidence)")
+                    labels.add(description)
+                }
+                onComplete(labels)
+            }
+            .addOnFailureListener { exception ->
+                Log.e("getLabels", "Failed to get labels", exception)
+                onComplete(emptyList()) // Handle failure by returning an empty list
             }
     }
+
 
     fun uploadImage(bitmap: Bitmap, imageName: String, callback: (String?) -> Unit) {
         val storage = Firebase.storage

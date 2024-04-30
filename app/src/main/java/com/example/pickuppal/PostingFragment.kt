@@ -148,26 +148,10 @@ class PostingFragment : Fragment() {
     private fun getAnnotations(photoName: String) {
         val firebaseAPI = FirebaseAPI()
 
-        firebaseAPI.getLabels(photoName, maxResults = 5)
-            .addOnCompleteListener { task ->
-                Log.d("Posting", "Task is successful: ${task.isSuccessful}")
-                if (task.isSuccessful()) {
-                    if (task.result != null) {
-                        val labels = mutableListOf<String>()
-                        val labelAnnotations =
-                            task.result!!.asJsonArray[0].asJsonObject["labelAnnotations"].asJsonArray
-                        for (label in labelAnnotations) {
-                            val labelObj = label.asJsonObject
-                            val description = labelObj["description"].asString
-                            val confidence = labelObj["score"].asDouble
-                            Log.d("getLabels", "image annotations: $labels ($confidence)")
-                            labels.add(description)
-                        }
-                    }
-                } else {
-                    Log.e("GetLabels", "Failed to get labels", task.exception)
-                }
-            }
+        firebaseAPI.getLabels(photoName, maxResults = 5) { labels ->
+            Log.d("Posting", "Received labels: $labels")
+            // Now you can use the labels here
+        }
     }
 
 
