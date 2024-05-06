@@ -1,5 +1,4 @@
 import android.graphics.Bitmap
-import android.util.Log
 import com.example.pickuppal.PostingData
 import com.example.pickuppal.UserData
 import com.example.pickuppal.UserStatistics
@@ -16,8 +15,6 @@ import java.io.ByteArrayOutputStream
 
 // Class that connects to our Firebase database
 class FirebaseAPI {
-
-    private val TAG = "firebaseAPI"
     private val db = Firebase.database.reference
 
     // function that returns reference to the firebase database
@@ -31,7 +28,6 @@ class FirebaseAPI {
 
         postingDataRef.removeValue()
             .addOnSuccessListener {
-                Log.d(TAG, "Posting data deleted successfully")
                 getUserStatistics(userData, object : UserStatisticsCallback {
                     override fun onUserStatisticsReceived(userStatistics: UserStatistics) {
                         val updatedStatistics = userStatistics.copy(
@@ -41,13 +37,8 @@ class FirebaseAPI {
                     }
 
                     override fun onUserStatisticsError(e: Exception) {
-                        Log.e(TAG, "Error retrieving user statistics", e)
                     }
                 })
-            }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "Error deleting posting data", e)
-
             }
     }
 
@@ -55,7 +46,6 @@ class FirebaseAPI {
     fun uploadPostingData(data: PostingData, userData: UserData) {
         db.child("posting_data").child(data.postID).updateChildren(data.toMap())
             .addOnSuccessListener {
-                Log.d(TAG, "Added posting data")
                 getUserStatistics(userData, object : UserStatisticsCallback {
                     override fun onUserStatisticsReceived(userStatistics: UserStatistics) {
                         val updatedStatistics = userStatistics.copy(
@@ -65,13 +55,9 @@ class FirebaseAPI {
                     }
 
                     override fun onUserStatisticsError(e: Exception) {
-                        Log.e(TAG, "Error retrieving user statistics", e)
                     }
                 })
 
-            }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "Error adding posting data", e)
             }
     }
 
@@ -86,7 +72,6 @@ class FirebaseAPI {
             }
 
             override fun onUserStatisticsError(e: Exception) {
-                Log.e(TAG, "Error retrieving user statistics", e)
             }
         })
 
@@ -107,14 +92,11 @@ class FirebaseAPI {
         uploadTask.addOnSuccessListener { taskSnapshot ->
             imageRef.downloadUrl.addOnSuccessListener { uri ->
                 val imageUrl = uri.toString()
-                Log.d(TAG, "Image uploaded successfully. URL: $imageUrl")
                 callback(imageUrl)
             }.addOnFailureListener { exception ->
-                Log.e(TAG, "Error getting download URL: ${exception.message}")
                 callback(null)
             }
         }.addOnFailureListener { exception ->
-            Log.e(TAG, "Error uploading image: ${exception.message}")
             callback(null)
         }
     }
@@ -122,25 +104,17 @@ class FirebaseAPI {
     // function that updates user_statistics in the realtime database
     fun updateUserStatistics(data: UserStatistics) {
         db.child("user_statistics").child(data.userID).updateChildren(data.toMap())
-            .addOnSuccessListener {
-                Log.d(TAG, "Update user statistics")
-            }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "Error updating user statistics", e)
-            }
     }
 
     // function that retrieves user statistics from the database using a user's id
     fun getUserStatistics(userId: String, callback: UserStatisticsCallback) {
         db.child("user_statistics").child(userId).get()
             .addOnSuccessListener { dataSnapshot ->
-                Log.d(TAG, "get user statistics called!!")
                 if (dataSnapshot.exists()) {
                     val userStatistics = dataSnapshot.getValue(UserStatistics::class.java)
                     if (userStatistics != null) {
                         callback.onUserStatisticsReceived(userStatistics)
                     } else {
-                        Log.e(TAG, "User statistics is null")
                         callback.onUserStatisticsError(Exception("User statistics is null"))
                     }
                 } else {
@@ -153,34 +127,27 @@ class FirebaseAPI {
                     )
                     db.child("user_statistics").child(userId).setValue(defaultStatistics)
                         .addOnSuccessListener {
-                            Log.d(TAG, "Default user statistics created")
                             callback.onUserStatisticsReceived(defaultStatistics)
                         }
                         .addOnFailureListener { e ->
-                            Log.e(TAG, "Error creating default user statistics", e)
                             callback.onUserStatisticsError(e)
                         }
                 }
             }
             .addOnFailureListener { e ->
-                Log.d(TAG, "get user statistics called :(")
-                Log.e(TAG, "Error retrieving user statistics", e)
                 callback.onUserStatisticsError(e)
             }
     }
     // function that retrieves user statistics from the database using the user data
     fun getUserStatistics(data: UserData, callback: UserStatisticsCallback) {
-        Log.d(TAG, "get user statistics called")
         val userId = data.userId
         db.child("user_statistics").child(userId).get()
             .addOnSuccessListener { dataSnapshot ->
-                Log.d(TAG, "get user statistics called!!")
                 if (dataSnapshot.exists()) {
                     val userStatistics = dataSnapshot.getValue(UserStatistics::class.java)
                     if (userStatistics != null) {
                         callback.onUserStatisticsReceived(userStatistics)
                     } else {
-                        Log.e(TAG, "User statistics is null")
                         callback.onUserStatisticsError(Exception("User statistics is null"))
                     }
                 } else {
@@ -193,18 +160,14 @@ class FirebaseAPI {
                     )
                     db.child("user_statistics").child(userId).setValue(defaultStatistics)
                         .addOnSuccessListener {
-                            Log.d(TAG, "Default user statistics created")
                             callback.onUserStatisticsReceived(defaultStatistics)
                         }
                         .addOnFailureListener { e ->
-                            Log.e(TAG, "Error creating default user statistics", e)
                             callback.onUserStatisticsError(e)
                         }
                 }
             }
             .addOnFailureListener { e ->
-                Log.d(TAG, "get user statistics called :(")
-                Log.e(TAG, "Error retrieving user statistics", e)
                 callback.onUserStatisticsError(e)
             }
     }
@@ -275,7 +238,6 @@ class FirebaseAPI {
                 }
 
                 override fun onCancelled(databaseError: DatabaseError) {
-                    Log.e(TAG, "Error retrieving posting data list", databaseError.toException())
                     callback.onPostingDataListError(databaseError.toException())
                 }
             })
