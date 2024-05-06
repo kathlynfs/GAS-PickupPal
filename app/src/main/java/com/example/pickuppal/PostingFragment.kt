@@ -1,7 +1,9 @@
 package com.example.pickuppal
 
 import FirebaseAPI
+import android.Manifest
 import android.content.ContentValues
+import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
@@ -70,6 +72,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -80,6 +83,7 @@ import coil.request.ImageRequest
 import com.google.android.gms.maps.model.LatLng
 
 class PostingFragment : Fragment() {
+    private val CAMERA_PERMISSION = 1
     private val args: PostingFragmentArgs by navArgs()
     private val mutablePhotoUri: MutableLiveData<Uri?> = MutableLiveData(null)
     private var photoUri: LiveData<Uri?> = mutablePhotoUri
@@ -115,7 +119,13 @@ class PostingFragment : Fragment() {
         }
     }
 
+    private fun getCameraPermission() {
+        if (ActivityCompat.checkSelfPermission(requireActivity(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(requireActivity(), listOf(Manifest.permission.CAMERA).toTypedArray(), CAMERA_PERMISSION)
+        }
+    }
     private fun launchTakePicture() {
+        getCameraPermission()
         val timestamp = System.currentTimeMillis()
         val name = "IMG_${timestamp}.jpeg"
         photoName = name
@@ -128,7 +138,6 @@ class PostingFragment : Fragment() {
         )
         try {
             takePhoto.launch(photoUri)
-            Log.d("launchTakePicture", "Bitmap decoded")
         } catch (e: Exception) {
             e.printStackTrace()
         }
