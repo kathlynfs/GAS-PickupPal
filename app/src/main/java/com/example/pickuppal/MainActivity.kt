@@ -18,12 +18,13 @@ import com.google.android.gms.tasks.OnTokenCanceledListener
 
 class MainActivity : AppCompatActivity(), CurrentLocationDeterminer {
 
-    private val FINE_PERMISSION_CODE = 1
+    private val finePermissionCode = 1
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        // lock orientation to portrait because it is best for typing
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
     }
 
@@ -35,27 +36,37 @@ class MainActivity : AppCompatActivity(), CurrentLocationDeterminer {
 
     // requests permission to fine location if not already accessible and then returns device's current location
     // using fusedLocationProviderClient
-    private fun getLastLocation(): Task<Location>
-    {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
-        {
-            ActivityCompat.requestPermissions(this, listOf(Manifest.permission.ACCESS_FINE_LOCATION).toTypedArray(), FINE_PERMISSION_CODE)
+    private fun getLastLocation(): Task<Location> {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                listOf(Manifest.permission.ACCESS_FINE_LOCATION).toTypedArray(),
+                finePermissionCode
+            )
         }
 
-        var task = fusedLocationProviderClient.getCurrentLocation(PRIORITY_LOW_POWER, object : CancellationToken() {
-            override fun onCanceledRequested(p0: OnTokenCanceledListener) = CancellationTokenSource().token
+        return fusedLocationProviderClient.getCurrentLocation(
+            PRIORITY_LOW_POWER,
+            object : CancellationToken() {
+                override fun onCanceledRequested(p0: OnTokenCanceledListener) =
+                    CancellationTokenSource().token
 
-            override fun isCancellationRequested() = false
-        })
-
-        return task
+                override fun isCancellationRequested() = false
+            })
     }
 
     // checks to see if fine location access was granted and then behaves appropriately
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray)
     {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if(requestCode == FINE_PERMISSION_CODE)
+        if(requestCode == finePermissionCode)
         {
             if(grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)
             {
