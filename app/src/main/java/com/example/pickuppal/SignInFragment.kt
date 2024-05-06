@@ -36,6 +36,10 @@ import com.google.android.gms.auth.api.identity.Identity
 import kotlinx.coroutines.launch
 
 class SignInFragment : Fragment() {
+    // Google OneTap, which is the recommended way to build sign in for a
+    // Firebase application requires that the user links a google account
+    // to their android phone. If this is not the case, user will receive message
+    // stating to link a google account to their device
     private val googleOAuthClient by lazy {
         GoogleOAuthClient(
             context = requireContext(),
@@ -101,13 +105,13 @@ class SignInFragment : Fragment() {
         }
     }
 
+    // Used this for login https://www.youtube.com/watch?v=zCIfBbm06QM
     @Composable
     fun SignInScreen(
         onSignInClick: () -> Unit,
         onSignInSuccess: (UserData) -> Unit,
         onSignInFailure: () -> Unit
     ) {
-        val context = LocalContext.current
         val state by viewModel.state.collectAsStateWithLifecycle()
 
         LaunchedEffect(state.isSignInSuccessful) {
@@ -133,7 +137,7 @@ class SignInFragment : Fragment() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "PickUp Pal",
+                text = getString(R.string.pickup_pal),
                 fontSize = 50.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
@@ -143,7 +147,7 @@ class SignInFragment : Fragment() {
                 onClick = onSignInClick,
                 modifier = Modifier.padding(top = 16.dp)
             ) {
-                Text("Sign In")
+                Text(getString(R.string.sign_in))
             }
 
         }

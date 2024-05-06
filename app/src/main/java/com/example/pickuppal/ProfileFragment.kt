@@ -68,11 +68,14 @@ class ProfileFragment : Fragment() {
         val user = args.user
         val composeView = ComposeView(requireContext())
 
+        // retrieve user statistics from firebase
         firebaseAPI.getUserStatistics(user, object : UserStatisticsCallback {
             override fun onUserStatisticsReceived(userStatistics: UserStatistics) {
+                // retrieve posting data from said user
                 firebaseAPI.getPostingDataList(user, object : PostingDataListCallBack {
                     override fun onPostingDataListReceived(postingDataList: List<PostingData>) {
                         listItems.clear()
+                        // go over posting data and add it to listItems used in Compose
                         postingDataList.forEach { postingData ->
                             val listingItem = ListingItem(
                                 dataId = postingData.postID,
@@ -113,13 +116,13 @@ class ProfileFragment : Fragment() {
             override fun onUserStatisticsError(e: Exception) {
                 composeView.setContent {
                     // Show an error message or handle the error scenario
-                    Text("Error retrieving user statistics")
+                    Text(getString(R.string.error_user_stats))
                 }
             }
         })
         composeView.setContent {
             // Show a loading indicator or placeholder UI
-            Text("Loading user statistics...")
+            Text(getString(R.string.loading_user_stats))
         }
 
         return composeView
@@ -145,6 +148,7 @@ class ProfileFragment : Fragment() {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
+                // create row with back button, profile picture, username, and logout button
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -158,7 +162,7 @@ class ProfileFragment : Fragment() {
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ArrowBack,
-                                contentDescription = "Back"
+                                contentDescription = getString(R.string.back)
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
@@ -181,12 +185,13 @@ class ProfileFragment : Fragment() {
                         modifier = Modifier
                             .padding(16.dp)
                     ) {
-                        Text("Log Out")
+                        Text(getString(R.string.logout))
                     }
+                    // Display user rating if available o.w. 0
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Default.Star,
-                            contentDescription = "Rating",
+                            contentDescription = getString(R.string.rating),
                             tint = Color.Black
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -201,6 +206,7 @@ class ProfileFragment : Fragment() {
                         )
                     }
                 }
+                // display user statistics (items posted and items claimed)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -216,7 +222,7 @@ class ProfileFragment : Fragment() {
                             color = Color.Black
                         )
                         Text(
-                            text = "Items Posted",
+                            text = getString(R.string.items_posted),
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.Gray
                         )
@@ -230,17 +236,18 @@ class ProfileFragment : Fragment() {
                             color = Color.Black
                         )
                         Text(
-                            text = "Items Claimed",
+                            text = getString(R.string.items_claimed),
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.Gray
                         )
                     }
                 }
                 Text(
-                    text = "Listings",
+                    text = getString(R.string.listings),
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
                 )
+                //scrolling list of items
                 LazyColumn(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -256,11 +263,7 @@ class ProfileFragment : Fragment() {
                         )
                     }
                 }
-
-
             }
-
-
         }
     }
 
@@ -269,6 +272,7 @@ class ProfileFragment : Fragment() {
         modifier: Modifier = Modifier,
         imageUrl: String
     ) {
+        //display profile picture obtained from SignInFragment
         Image(
             painter = rememberAsyncImagePainter(imageUrl),
             contentDescription = null,
@@ -300,16 +304,16 @@ class ProfileFragment : Fragment() {
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete"
+                            contentDescription = getString(R.string.delete)
                         )
                     }
                 }
 
-                if (!item.imageUrl.isNullOrEmpty()) {
-                    // Display the image if imageUrl is not null or empty
+                // Display the listing image if available
+                if (item.imageUrl.isNotEmpty()) {
                     AsyncImage(
                         model = item.imageUrl,
-                        contentDescription = "Listing Image",
+                        contentDescription = getString(R.string.listing_image),
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 200.dp)
@@ -331,6 +335,8 @@ class ProfileFragment : Fragment() {
         }
     }
 
+    // data class representing a listing item, made as it slightly differs
+    // from one in Firebase database
     data class ListingItem(
         val dataId: String,
         val title: String,
