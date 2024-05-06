@@ -12,6 +12,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -547,8 +548,6 @@ class MapFragment : Fragment() {
         val itemLocation = LatLng(postingData.value.lat, postingData.value.lng)
         val distance = calculateDistance(userLocation, itemLocation)
 
-
-
         LaunchedEffect(initialPostingData) {
             isVisible.value = true
         }
@@ -674,7 +673,7 @@ class MapFragment : Fragment() {
                                     )
                                 }
                                 ExtendedFloatingActionButton(
-                                    onClick = { shouldTrackRoute.value = true },
+                                    onClick = { shouldTrackRoute.value = !shouldTrackRoute.value },
                                     icon = {
                                         Icon(
                                             Icons.Filled.Place,
@@ -789,6 +788,15 @@ class MapFragment : Fragment() {
 
         if (shouldTrackRoute.value) {
             TrackRoute(postingData.value, currentLocation!!, onDismissRequest = { shouldTrackRoute.value = false })
+            Toast.makeText(
+                context,
+                R.string.track_route,
+                Toast.LENGTH_LONG
+            ).show()
+        }
+        else
+        {
+            polylineToShow = null
         }
     }
 
@@ -818,8 +826,6 @@ class MapFragment : Fragment() {
                     Log.d(ContentValues.TAG, "failed")
 
                 }
-
-
             }
         }
     }
