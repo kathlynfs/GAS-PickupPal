@@ -1,7 +1,5 @@
 package com.example.pickuppal
 
-import java.util.UUID
-
 data class PostingData(
     var postID: String,
     val userID: String,

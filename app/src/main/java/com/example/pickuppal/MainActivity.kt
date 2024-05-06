@@ -1,36 +1,21 @@
 package com.example.pickuppal
 
-import FirebaseAPI
 import android.Manifest
-import android.content.ContentValues
-import android.content.ContentValues.TAG
 import android.content.pm.PackageManager
 import android.location.Location
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.tasks.Task
-
 import com.google.android.gms.location.Priority.PRIORITY_LOW_POWER
-import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.tasks.CancellationToken
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.gms.tasks.OnTokenCanceledListener
 
 class MainActivity : AppCompatActivity(), CurrentLocationDeterminer {
-//    private val googleOAuthClient by lazy {
-//        GoogleOAuthClient(
-//            context = applicationContext,
-//            oneTapClient = Identity.getSignInClient(applicationContext)
-//        )
-//    }
 
     private val FINE_PERMISSION_CODE = 1
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
@@ -40,11 +25,14 @@ class MainActivity : AppCompatActivity(), CurrentLocationDeterminer {
         setContentView(R.layout.activity_main)
     }
 
+    // overrides function created in CurrentLocationDeterminer
     override fun determineCurrentLocation(): Task<Location> {
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
         return getLastLocation()
     }
 
+    // requests permission to fine location if not already accessible and then returns device's current location
+    // using fusedLocationProviderClient
     private fun getLastLocation(): Task<Location>
     {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
@@ -61,6 +49,7 @@ class MainActivity : AppCompatActivity(), CurrentLocationDeterminer {
         return task
     }
 
+    // checks to see if fine location access was granted and then behaves appropriately
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray)
     {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)

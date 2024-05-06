@@ -70,14 +70,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import java.util.UUID
 import coil.request.ImageRequest
-
-
+import com.google.android.gms.maps.model.LatLng
 
 class PostingFragment : Fragment() {
     private val args: PostingFragmentArgs by navArgs()
@@ -103,7 +103,6 @@ class PostingFragment : Fragment() {
             }
         }
     }
-
 
     private val takePhoto = registerForActivityResult(
         ActivityResultContracts.TakePicture()
@@ -195,12 +194,6 @@ class PostingFragment : Fragment() {
                     placeholderText = "Add a title"
                 )
 
-                PictureButton(
-                    onClick = { launchTakePicture() },
-                    modifier = Modifier.padding(start = 16.dp, bottom = 16.dp, top = 0.dp, end = 16.dp),
-                    imageUri = previewImageUri
-                )
-
                 LocationTextField(
                     value = locationState.value,
                     onValueChange = {
@@ -270,6 +263,12 @@ class PostingFragment : Fragment() {
                         )
                     }
                 }
+
+                PictureButton(
+                    onClick = { launchTakePicture() },
+                    modifier = Modifier.padding(start = 16.dp, bottom = 16.dp, top = 0.dp, end = 16.dp),
+                    imageUri = previewImageUri
+                )
 
                 DescriptionTextField(
                     value = descriptionState.value,
@@ -431,6 +430,11 @@ class PostingFragment : Fragment() {
                             // reverse geocode to get cleanly formatted address
                             val lat = geocodeResp.results[0].geometry.location.lat.toDouble()
                             val lng = geocodeResp.results[0].geometry.location.lng.toDouble()
+
+                            val latLng = LatLng(lat, lng)
+                            //setCameraPosition(latLng)
+                            val viewModel: SharedViewModel by activityViewModels()
+                            viewModel.setCameraPosition(latLng)
 
                             try {
                                 val reverseGeocodeResp =

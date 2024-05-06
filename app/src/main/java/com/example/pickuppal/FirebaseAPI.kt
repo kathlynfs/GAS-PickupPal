@@ -1,8 +1,5 @@
 import android.graphics.Bitmap
 import android.util.Log
-import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.findViewTreeViewModelStoreOwner
 import com.example.pickuppal.PostingData
 import com.example.pickuppal.UserData
 import com.example.pickuppal.UserStatistics
@@ -15,8 +12,6 @@ import com.google.firebase.database.Transaction
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.database
 import com.google.firebase.storage.storage
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayOutputStream
 
 class FirebaseAPI {
