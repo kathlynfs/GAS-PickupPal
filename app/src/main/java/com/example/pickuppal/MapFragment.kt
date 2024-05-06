@@ -47,6 +47,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -89,12 +90,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import coil.compose.AsyncImage
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.GoogleMapOptions
 import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.ButtCap
@@ -109,6 +114,7 @@ import com.google.firebase.database.ValueEventListener
 import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
@@ -133,6 +139,7 @@ class MapFragment : Fragment() {
     private var polylineDestination: String? = null
     private val firebaseAPI = FirebaseAPI()
     private lateinit var profilePic: String
+    private var cameraPosition:CameraPosition? = null
 
     val MAX_CLAIM_DISTANCE = 0.1 // miles
 
@@ -185,6 +192,10 @@ class MapFragment : Fragment() {
             })
         }
 
+        val viewModel: SharedViewModel by activityViewModels()
+        viewModel.getCameraPosition().observe(viewLifecycleOwner, Observer<LatLng?> { input ->
+            cameraPosition = CameraPosition.fromLatLngZoom(input!!, 15f)
+        })
         return ComposeView(requireContext()).apply {
             val navController = NavHostFragment.findNavController(this@MapFragment)
 
@@ -203,6 +214,8 @@ class MapFragment : Fragment() {
     private fun determineCurrentLocation(): Task<Location> {
         return currentLocationDeterminer.determineCurrentLocation()
     }
+
+
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -223,6 +236,13 @@ class MapFragment : Fragment() {
         var cameraPositionState = rememberCameraPositionState()
         val showClaimedPosts = remember { mutableStateOf(true) }
         val filteredPostingDataList = remember { mutableStateOf(if (showClaimedPosts.value) postingDataList else postingDataList.filter { !it.claimed }.toMutableList()) }
+        var uiSettings by remember {
+            mutableStateOf(
+                MapUiSettings(
+                    zoomControlsEnabled = false,
+                    zoomGesturesEnabled = true
+                )
+            ) }
 
 
         LaunchedEffect(Unit)
@@ -240,24 +260,36 @@ class MapFragment : Fragment() {
 
         }
 
-        currentLocation.value?.let { currLocation ->
-            val startingLocation =
-                LatLng(currLocation.latitude, currLocation.longitude)
-            cameraPositionState = rememberCameraPositionState {
-                position = CameraPosition.fromLatLngZoom(startingLocation, 15f)
+        if(cameraPosition == null) {
+            currentLocation.value?.let { currLocation ->
+                val startingLocation =
+                    LatLng(currLocation.latitude, currLocation.longitude)
+                cameraPositionState = rememberCameraPositionState {
+                    position = CameraPosition.fromLatLngZoom(startingLocation, 15f)
+                }
             }
         }
+        else{
+            cameraPositionState = rememberCameraPositionState {
+                position = cameraPosition as CameraPosition
+            }
+        }
+
         val properties by remember {
             mutableStateOf(MapProperties(isMyLocationEnabled = true))
         }
-        Box(modifier = Modifier.fillMaxSize().background(color = Color(0xFFF5F5F5))
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .background(color = Color(0xFFF5F5F5))
         ) {
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
                 properties = properties,
                 cameraPositionState = cameraPositionState,
+                googleMapOptionsFactory = { GoogleMapOptions().zoomGesturesEnabled(true) },
+                uiSettings = uiSettings,
                 content = {
-                    filteredPostingDataList.value.forEach{ data ->
+                    filteredPostingDataList.value.forEach { data ->
                         Marker(
                             state = MarkerState(LatLng(data.lat, data.lng)),
                             onClick = {
@@ -267,13 +299,14 @@ class MapFragment : Fragment() {
                             }
                         )
                     }
-                    if(polylineToShow != null) {
+                    if (polylineToShow != null) {
                         Polyline(
                             points = polylineToShow!!,
                             color = Color.Blue,
                             startCap = ButtCap(),
                             clickable = true,
-                            onClick = {val geoUri = "geo:0,0?q=${Uri.encode(polylineDestination)}"
+                            onClick = {
+                                val geoUri = "geo:0,0?q=${Uri.encode(polylineDestination)}"
                                 val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse(geoUri))
                                 // Set the package to specifically launch Google Maps app
                                 mapIntent.setPackage("com.google.android.apps.maps")
@@ -297,28 +330,48 @@ class MapFragment : Fragment() {
                 Icon(Icons.Default.Add, contentDescription = "Add Item", tint = Color.Black)
             }
 
-            ExtendedFloatingActionButton(
-                onClick = { isSettingsMenuOpen.value = true },
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(16.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Settings,
-                    contentDescription = "Settings",
-                    tint = Color.Black
-                )
+                ExtendedFloatingActionButton(
+                    onClick = {currentLocation.value?.let { currLocation ->
+                        val startingLocation =
+                            LatLng(currLocation.latitude, currLocation.longitude)
+                        cameraPositionState.position = CameraPosition.fromLatLngZoom(startingLocation, 15f)
+
+                    }},
+                    modifier = Modifier
+                        .padding(0.dp, 16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.LocationOn,
+                        contentDescription = "Current Location",
+                        tint = Color.Black
+                    )
+                }
+
+                ExtendedFloatingActionButton(
+                    onClick = { isSettingsMenuOpen.value = true},
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = "Settings",
+                        tint = Color.Black
+                    )
+                }
             }
 
             DockedSearchBar(
                 query = searchQuery.value,
-                onQueryChange = {  query ->
+                onQueryChange = { query ->
                     searchQuery.value = query
                     filteredPostingDataList.value = if (query.isNotBlank()) {
                         postingDataList.filter { data ->
                             data.title.contains(query, ignoreCase = true) ||
-                            data.description.contains(query, ignoreCase = true) ||
-                            data.reverseGeocodedAddress.contains(query, ignoreCase = true)
+                                    data.description.contains(query, ignoreCase = true) ||
+                                    data.reverseGeocodedAddress.contains(query, ignoreCase = true)
                         }.toMutableList()
                     } else {
                         postingDataList
@@ -364,7 +417,8 @@ class MapFragment : Fragment() {
                     } else {
                         IconButton(
                             onClick = {
-                                val action = MapFragmentDirections.actionMapFragmentToProfileFragment(user)
+                                val action =
+                                    MapFragmentDirections.actionMapFragmentToProfileFragment(user)
                                 navController.navigate(action) // Navigate to ProfileFragment
                             }
                         ) {
@@ -399,6 +453,7 @@ class MapFragment : Fragment() {
 
             )
         }
+
         // SETTINGS VISUALIZER
         val isSettingsMenuVisible = remember { mutableStateOf(false) }
         val isSettingsMenuAnimationFinished = remember { mutableStateOf(false) }
@@ -591,7 +646,10 @@ class MapFragment : Fragment() {
                             contentAlignment = Alignment.Center
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().height(200.dp).padding(5.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp)
+                                    .padding(5.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -608,7 +666,9 @@ class MapFragment : Fragment() {
                                             .fillMaxSize()
                                             .graphicsLayer(rotationZ = 90f)
                                             .clip(RoundedCornerShape(8.dp))
-                                            .clickable(onClick = { shouldMakeImageFullScreen.value = true }),
+                                            .clickable(onClick = {
+                                                shouldMakeImageFullScreen.value = true
+                                            }),
                                         contentScale = ContentScale.Crop
                                     )
                                 }
@@ -683,8 +743,10 @@ class MapFragment : Fragment() {
                                                     .clickable {
                                                         val newRating = index + 1
                                                         coroutineScope.launch {
-                                                            postingRef.child("rating")
-                                                                .setValue(newRating).await()
+                                                            postingRef
+                                                                .child("rating")
+                                                                .setValue(newRating)
+                                                                .await()
                                                             postingData.value.rating = newRating
                                                         }
                                                         firebaseAPI.submitRating(
@@ -784,7 +846,7 @@ class MapFragment : Fragment() {
                         model = postingData.photoUrl,
                         contentDescription = postingData.description,
                         modifier = Modifier
-                            .graphicsLayer( rotationZ = 90f )
+                            .graphicsLayer(rotationZ = 90f)
                             .fillMaxSize(),
                         contentScale = ContentScale.FillWidth
                     )

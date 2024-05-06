@@ -2,7 +2,9 @@ package com.example.pickuppal
 
 import FirebaseAPI
 import android.content.ContentValues
+import android.content.Context
 import android.graphics.BitmapFactory
+import android.location.Location
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -70,13 +72,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import java.util.UUID
 import coil.request.ImageRequest
-
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.tasks.Task
 
 
 class PostingFragment : Fragment() {
@@ -85,6 +89,7 @@ class PostingFragment : Fragment() {
     private var photoUri: LiveData<Uri?> = mutablePhotoUri
     private var photoName: String? = null
     private var photoFile: File? = null
+    //private lateinit var cameraPositionSetter: CameraPositionSetter
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -103,6 +108,15 @@ class PostingFragment : Fragment() {
             }
         }
     }
+
+    /*override fun onAttach(context: Context) {
+        super.onAttach(context)
+        cameraPositionSetter = context as CameraPositionSetter
+    }
+
+    private fun setCameraPosition(latLng: LatLng) {
+        cameraPositionSetter.setCameraPosition(latLng)
+    }*/
 
 
     private val takePhoto = registerForActivityResult(
@@ -431,6 +445,11 @@ class PostingFragment : Fragment() {
                             // reverse geocode to get cleanly formatted address
                             val lat = geocodeResp.results[0].geometry.location.lat.toDouble()
                             val lng = geocodeResp.results[0].geometry.location.lng.toDouble()
+
+                            val latLng = LatLng(lat, lng)
+                            //setCameraPosition(latLng)
+                            val viewModel: SharedViewModel by activityViewModels()
+                            viewModel.setCameraPosition(latLng)
 
                             try {
                                 val reverseGeocodeResp =
