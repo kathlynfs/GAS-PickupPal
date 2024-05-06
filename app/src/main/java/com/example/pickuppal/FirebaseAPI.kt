@@ -14,15 +14,18 @@ import com.google.firebase.database.database
 import com.google.firebase.storage.storage
 import java.io.ByteArrayOutputStream
 
+// Class that connects to our Firebase database
 class FirebaseAPI {
 
     private val TAG = "firebaseAPI"
     private val db = Firebase.database.reference
 
+    // function that returns reference to the firebase database
     fun getDB(): DatabaseReference {
         return db
     }
 
+    // function that deletes posting data from the database when given the data and id
     fun deletePostingData(userData: UserData, dataId: String) {
         val postingDataRef = db.child("posting_data").child(dataId)
 
@@ -48,6 +51,7 @@ class FirebaseAPI {
             }
     }
 
+    // function that uploads posting data to posting_data within our realtime database
     fun uploadPostingData(data: PostingData, userData: UserData) {
         db.child("posting_data").child(data.postID).updateChildren(data.toMap())
             .addOnSuccessListener {
@@ -71,6 +75,7 @@ class FirebaseAPI {
             }
     }
 
+    // function that is called when a user claims an item
     fun claimItem(claimingUser: UserData) {
         getUserStatistics(claimingUser, object : UserStatisticsCallback {
             override fun onUserStatisticsReceived(userStatistics: UserStatistics) {
@@ -87,6 +92,7 @@ class FirebaseAPI {
 
     }
 
+    // function that is called to upload an image of an item to posting_data in the realtime database
     fun uploadImage(bitmap: Bitmap, imageName: String, callback: (String?) -> Unit) {
         val storage = Firebase.storage
         val storageRef = storage.reference
@@ -113,6 +119,7 @@ class FirebaseAPI {
         }
     }
 
+    // function that updates user_statistics in the realtime database
     fun updateUserStatistics(data: UserStatistics) {
         db.child("user_statistics").child(data.userID).updateChildren(data.toMap())
             .addOnSuccessListener {
@@ -123,7 +130,7 @@ class FirebaseAPI {
             }
     }
 
-
+    // function that retrieves user statistics from the database using a user's id
     fun getUserStatistics(userId: String, callback: UserStatisticsCallback) {
         db.child("user_statistics").child(userId).get()
             .addOnSuccessListener { dataSnapshot ->
@@ -161,6 +168,7 @@ class FirebaseAPI {
                 callback.onUserStatisticsError(e)
             }
     }
+    // function that retrieves user statistics from the database using the user data
     fun getUserStatistics(data: UserData, callback: UserStatisticsCallback) {
         Log.d(TAG, "get user statistics called")
         val userId = data.userId
@@ -201,6 +209,7 @@ class FirebaseAPI {
             }
     }
 
+    // function that is called when a user wants to submit a rating
     fun submitRating(postingData: PostingData, rating: Int) {
 
         db.child("user_statistics").child(postingData.userID).runTransaction(object : Transaction.Handler {
@@ -229,6 +238,7 @@ class FirebaseAPI {
         })
     }
 
+    // function that retrieves all of the data within posting_data and sets postingDataList equivalent to it
     fun getPostingDataList(data: UserData, callback: PostingDataListCallBack) {
         val userId = data.userId
         val postingDataRef = db.child("posting_data")
@@ -272,12 +282,14 @@ class FirebaseAPI {
     }
 }
 
-    interface PostingDataListCallBack {
-        fun onPostingDataListReceived(postingDataList: List<PostingData>)
-        fun onPostingDataListError(e: Exception)
-    }
+// callback for posting data list
+interface PostingDataListCallBack {
+    fun onPostingDataListReceived(postingDataList: List<PostingData>)
+    fun onPostingDataListError(e: Exception)
+}
 
-    interface UserStatisticsCallback {
-        fun onUserStatisticsReceived(userStatistics: UserStatistics)
-        fun onUserStatisticsError(e: Exception)
-    }
+// callback for user statistics
+interface UserStatisticsCallback {
+    fun onUserStatisticsReceived(userStatistics: UserStatistics)
+    fun onUserStatisticsError(e: Exception)
+}
