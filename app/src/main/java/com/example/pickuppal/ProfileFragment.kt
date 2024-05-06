@@ -5,7 +5,6 @@ import PostingDataListCallBack
 import UserStatisticsCallback
 import android.content.Intent
 import android.os.Bundle
-import android.provider.ContactsContract.Profile
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -51,14 +49,10 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
-import com.google.android.gms.auth.api.identity.Identity
 import kotlinx.coroutines.launch
-import kotlin.math.ceil
-import kotlin.math.floor
 
 class ProfileFragment : Fragment() {
 
