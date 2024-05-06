@@ -125,44 +125,36 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 class MapFragment : Fragment() {
-    private var currentLocation: Location? = null
-    private lateinit var currentLocationDeterminer: CurrentLocationDeterminer
-    private lateinit var db: DatabaseReference
-    private var postingDataList = mutableListOf<PostingData>()
-    private var polylineToShow: List<LatLng>? = null
+    private var currentLocation: Location? = null // stores the current location of the user
+    private lateinit var currentLocationDeterminer: CurrentLocationDeterminer // used for starting map centered on user
+    private lateinit var db: DatabaseReference // used for initial population of PostingData (grabs reference from firebaseAPI.kt)
+    private var postingDataList = mutableListOf<PostingData>() // initial list of posting data used for filtering
+    private var polylineToShow: List<LatLng>? = null // polyline to show on map
     private var polylineDestination: String? = null
-    private val firebaseAPI = FirebaseAPI()
-    private lateinit var profilePic: String
-    private var cameraPosition:CameraPosition? = null
+    private val firebaseAPI = FirebaseAPI() // instance of firebase database
+    private lateinit var profilePic: String // url of profile picture provided on OAuth login
+    private var cameraPosition:CameraPosition? = null // sets camera position to currentLocationDeterminer
 
-    val MAX_CLAIM_DISTANCE = 0.1 // miles
+    val MAX_CLAIM_DISTANCE = 0.1 // miles (can be modified to allow for longer distance claiming)
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View
     {
+        // args provided on navigation by SignInFragment of user information
         val args = MapFragmentArgs.fromBundle(requireArguments())
         val profilePicture = args.user.profilePictureUrl
         profilePic = profilePicture!!
         db = FirebaseAPI().getDB()
 
+        // set current location and populate initial dataList
         determineCurrentLocation().addOnSuccessListener { location ->
             currentLocation = location
-            val userLocation = LatLng(location.latitude, location.longitude)
-
             db.child("posting_data").addChildEventListener(object : ChildEventListener {
                 override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                     val postID = snapshot.key
                     val data = snapshot.getValue(PostingData::class.java)
                     data?.let {
                         it.postID = postID ?: ""
-
-                        // Used ChatGPT for calculateDistance
-                        //val distance = calculateDistance(userLocation, LatLng(it.lat, it.lng))
-
-                        // if longer than 10 km (max supported)
-                        //if (distance <= 10.0) {
-                        //    Log.d(ContentValues.TAG, "snapshot.value = $it")
                         postingDataList.add(it)
-                    //}
                     }
                 }
 
@@ -176,8 +168,7 @@ class MapFragment : Fragment() {
                 }
 
                 override fun onChildRemoved(snapshot: DataSnapshot) {
-                    var data = snapshot.getValue(PostingData::class.java)
-                    Log.d(ContentValues.TAG, "snapshot.value = $data ")
+                    val data = snapshot.getValue(PostingData::class.java)
                     postingDataList.remove(data)
                 }
 
@@ -186,6 +177,7 @@ class MapFragment : Fragment() {
             })
         }
 
+        // remnant of fragment architecture we were using before
         val viewModel: SharedViewModel by activityViewModels()
         viewModel.getCameraPosition().observe(viewLifecycleOwner, Observer<LatLng?> { input ->
             cameraPosition = CameraPosition.fromLatLngZoom(input!!, 15f)
@@ -194,9 +186,12 @@ class MapFragment : Fragment() {
             val navController = NavHostFragment.findNavController(this@MapFragment)
 
             setContent {
+                // displaying MapScreen compose object
                 MapScreen(
-                    profilePictureUrl = profilePicture!!,
-                    navController = navController)}
+                    profilePictureUrl = profilePicture,
+                    navController = navController
+                )
+            }
         }
     }
 
@@ -212,11 +207,13 @@ class MapFragment : Fragment() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun MapScreen(
-        profilePictureUrl: String,
+        profilePictureUrl: String, // profilePictureUrl is passed in as it isn't saved in the database and only
+                                   // retrieved on OAuth login
         navController: NavController
     ) {
         val args = MapFragmentArgs.fromBundle(requireArguments())
         val user = args.user
+        // all these variables stored in remember as it can update as time goes on
         val currentLocation = remember { mutableStateOf<Location?>(null) }
         val coroutineScope = rememberCoroutineScope()
         val searchQuery = remember { mutableStateOf("") }
@@ -227,13 +224,15 @@ class MapFragment : Fragment() {
         var cameraPositionState = rememberCameraPositionState()
         val showClaimedPosts = remember { mutableStateOf(true) }
         val filteredPostingDataList = remember { mutableStateOf(if (showClaimedPosts.value) postingDataList else postingDataList.filter { !it.claimed }.toMutableList()) }
-        var uiSettings by remember {
+        val uiSettings by remember {
             mutableStateOf(
                 MapUiSettings(
                     zoomControlsEnabled = false,
                     zoomGesturesEnabled = true
                 )
-            ) }
+            )
+        }
+
 
         LaunchedEffect(Unit)
         {
@@ -249,6 +248,7 @@ class MapFragment : Fragment() {
             }
         }
 
+        // setting camera to current location
         if(cameraPosition == null) {
             currentLocation.value?.let { currLocation ->
                 val startingLocation =
@@ -264,6 +264,7 @@ class MapFragment : Fragment() {
             }
         }
 
+        // my location enabled shows the blue dot
         val properties by remember {
             mutableStateOf(MapProperties(isMyLocationEnabled = true))
         }
@@ -278,6 +279,7 @@ class MapFragment : Fragment() {
                 googleMapOptionsFactory = { GoogleMapOptions().zoomGesturesEnabled(true) },
                 uiSettings = uiSettings,
                 content = {
+                    // add marker for each value in filteredPostingDataList (which are items after filtering)
                     filteredPostingDataList.value.forEach { data ->
                         Marker(
                             state = MarkerState(LatLng(data.lat, data.lng)),
@@ -288,6 +290,8 @@ class MapFragment : Fragment() {
                             }
                         )
                     }
+
+                    // draw polyline if directions was clicked
                     if (polylineToShow != null) {
                         Polyline(
                             points = polylineToShow!!,
@@ -307,6 +311,8 @@ class MapFragment : Fragment() {
                 },
             )
 
+            // Uses Fragment Navigation as we still use a mixture of Compose and fragments
+            // to PostingFragment if new posting button is clicked
             ExtendedFloatingActionButton(
                 onClick = {
                     val action = MapFragmentDirections.actionMapFragmentToPostingFragment(user)
@@ -316,9 +322,10 @@ class MapFragment : Fragment() {
                     .align(Alignment.BottomEnd)
                     .padding(16.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Item", tint = Color.Black)
+                Icon(Icons.Default.Add, contentDescription = getString(R.string.add_item), tint = Color.Black)
             }
 
+            // Current location button to recenter map
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -336,24 +343,31 @@ class MapFragment : Fragment() {
                 ) {
                     Icon(
                         imageVector = Icons.Filled.LocationOn,
-                        contentDescription = "Current Location",
+                        contentDescription = getString(R.string.current_location),
                         tint = Color.Black
                     )
                 }
 
+                // Settings button for filtering data
                 ExtendedFloatingActionButton(
                     onClick = { isSettingsMenuOpen.value = true},
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Settings,
-                        contentDescription = "Settings",
+                        contentDescription = getString(R.string.settings),
                         tint = Color.Black
                     )
                 }
             }
 
+            // Search bar for filtering data by title at top of screen
+            // Search icon turns to back button when clicked to exit out of the search
+            // or clicking on a query will lead you to the search and close out of the
+            // search bar while auto-filling the title at the top
+            // Trailing icon turns into x when value is inputted to clear the current query
             DockedSearchBar(
                 query = searchQuery.value,
+                // markers change as filteredPostingDataList gets modified as onQueryChange gets called
                 onQueryChange = { query ->
                     searchQuery.value = query
                     filteredPostingDataList.value = if (query.isNotBlank()) {
@@ -371,7 +385,7 @@ class MapFragment : Fragment() {
                 },
                 active = isSearchActive.value,
                 onActiveChange = { isSearchActive.value = it },
-                placeholder = { Text("Search") },
+                placeholder = { Text(getString(R.string.search)) },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(16.dp)
@@ -386,7 +400,7 @@ class MapFragment : Fragment() {
                     ) {
                         Icon(
                             imageVector = if (isSearchActive.value) Icons.AutoMirrored.Filled.ArrowBack else Icons.Filled.Search,
-                            contentDescription = if (isSearchActive.value) "Back" else "Search"
+                            contentDescription = if (isSearchActive.value) getString(R.string.back) else getString(R.string.search)
                         )
                     }
                 },
@@ -400,7 +414,7 @@ class MapFragment : Fragment() {
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Clear,
-                                contentDescription = "Clear"
+                                contentDescription = getString(R.string.clear)
                             )
                         }
                     } else {
@@ -413,7 +427,7 @@ class MapFragment : Fragment() {
                         ) {
                             AsyncImage(
                                 model = profilePictureUrl,
-                                contentDescription = "Profile Picture",
+                                contentDescription = getString(R.string.profile_picture),
                                 modifier = Modifier
                                     .size(24.dp)
                                     .clip(CircleShape)
@@ -421,6 +435,8 @@ class MapFragment : Fragment() {
                         }
                     }
                 },
+                // List of items that much the current query based on either title or description.
+                // when item is clicked, it will autofill the search bar
                 content = {
                     LazyColumn {
                         this.items(filteredPostingDataList.value) { data ->
@@ -447,10 +463,12 @@ class MapFragment : Fragment() {
         val isSettingsMenuVisible = remember { mutableStateOf(false) }
         val isSettingsMenuAnimationFinished = remember { mutableStateOf(false) }
 
+        // if users presses android back button, doesn't exit out of the fragment
         BackHandler(enabled = isSettingsMenuOpen.value) {
             isSettingsMenuOpen.value = false
         }
 
+        // if a marker is clicked, close the settings menu
         LaunchedEffect(isMarkerClickPostingDataOpen.value) {
             if (isMarkerClickPostingDataOpen.value) {
                 isSettingsMenuVisible.value = true
@@ -458,12 +476,14 @@ class MapFragment : Fragment() {
             }
         }
 
+        // for animation of sliding settings menu
         LaunchedEffect(isSettingsMenuOpen.value) {
             if (isSettingsMenuOpen.value) {
                 isSettingsMenuAnimationFinished.value = false
             }
         }
 
+        // pass in filteredPostingDataList to modify listing in memory
         if (isSettingsMenuOpen.value) {
             SearchSettingsMenu(
                 filteredPostingDataList,
@@ -485,10 +505,12 @@ class MapFragment : Fragment() {
         val isCardVisible = remember { mutableStateOf(false) }
         val isAnimationFinished = remember { mutableStateOf(false) }
 
+        // back handler if user presses back button while posing is open
         BackHandler(enabled = isMarkerClickPostingDataOpen.value) {
             isCardVisible.value = false
         }
 
+        // more animation (used Chat for animation help)
         LaunchedEffect(isMarkerClickPostingDataOpen.value) {
             if (isMarkerClickPostingDataOpen.value) {
                 isCardVisible.value = true
@@ -538,7 +560,10 @@ class MapFragment : Fragment() {
         LaunchedEffect(initialPostingData) {
             isVisible.value = true
         }
-
+        // set up a listener to update the posting data when it changes in the database
+        // i.e. when user presses the rating button or claim button
+        // to avoid showing stale data or updating data even though no changes in the database
+        // was made
         DisposableEffect(initialPostingData.postID) {
             val postingListener = object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -587,13 +612,14 @@ class MapFragment : Fragment() {
                         containerColor = MaterialTheme.colorScheme.surface
                     )
                 ) {
+                    // text information of item
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = "Title",
+                            text = getString(R.string.title),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(bottom = 1.dp)
                         )
@@ -603,7 +629,7 @@ class MapFragment : Fragment() {
                             modifier = Modifier.padding(bottom = 5.dp)
                         )
                         Text(
-                            text = "Location",
+                            text = getString(R.string.location),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(bottom = 1.dp)
                         )
@@ -613,7 +639,7 @@ class MapFragment : Fragment() {
                             modifier = Modifier.padding(bottom = 5.dp)
                         )
                         Text(
-                            text = "Description",
+                            text = getString(R.string.description),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(bottom = 1.dp)
                         )
@@ -624,7 +650,7 @@ class MapFragment : Fragment() {
                         )
 
                         Text(
-                            text = "Image & Directions",
+                            text = getString(R.string.image_and_directions),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(bottom = 1.dp)
                         )
@@ -664,17 +690,17 @@ class MapFragment : Fragment() {
                                     icon = {
                                         Icon(
                                             Icons.Filled.Place,
-                                            "Extended floating action button."
+                                            getString(R.string.track_route_text)
                                         )
                                     },
-                                    text = { Text(text = "Directions") },
+                                    text = { Text(text = getString(R.string.directions)) },
                                     modifier = Modifier.padding(start = 16.dp)
                                 )
                             }
                         }
 
                         Text(
-                            text = "Claiming",
+                            text = getString(R.string.claiming),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(top = 8.dp)
                         )
@@ -685,6 +711,7 @@ class MapFragment : Fragment() {
                                 .padding(top = 5.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
+                            // claim item button
                             Button(
                                 onClick = {
                                     if (!isOwnItem) {
@@ -701,23 +728,28 @@ class MapFragment : Fragment() {
                                 enabled = !postingData.value.claimed && !isOwnItem && distance <= MAX_CLAIM_DISTANCE,
                                 shape = CircleShape,
                             ) {
+                                // handles all 4 scenario (can't claim own item, already claimed,
+                                // too far to claim, or available to claim)
                                 Text(
                                     text = when {
-                                        isOwnItem -> "You can't claim your own item!"
-                                        postingData.value.claimed -> "Already Claimed"
-                                        distance > MAX_CLAIM_DISTANCE -> "Too far to claim"
-                                        else -> "Claim"
+                                        isOwnItem -> getString(R.string.claim_own_item_err)
+                                        postingData.value.claimed -> getString(R.string.already_claimed)
+                                        distance > MAX_CLAIM_DISTANCE -> getString(R.string.too_far)
+                                        else -> getString(R.string.claim)
                                     }
                                 )
                             }
 
+                            // if postingData's claimed by userId value is same as current user's userId
+                            // and rating is 0 (means not claimed [can only rate between 1-5 starts]),
+                            // user is then finally given option to give rating
                             if (postingData.value.claimedBy == user.userId) {
                                 if (postingData.value.rating == 0) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "Rating:",
+                                            text = getString(R.string.rating),
                                             style = MaterialTheme.typography.bodyLarge
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
@@ -746,7 +778,7 @@ class MapFragment : Fragment() {
                                     }
                                 } else {
                                     Text(
-                                        text = "You have already submitted a rating for this item.",
+                                        text = getString(R.string.already_rated),
                                         style = MaterialTheme.typography.bodyMedium,
                                         modifier = Modifier.padding(start = 16.dp)
                                     )
@@ -765,6 +797,7 @@ class MapFragment : Fragment() {
             }
         }
 
+        // making image full screen (can be exited with back button or x button)
         BackHandler(enabled = shouldMakeImageFullScreen.value) {
             shouldMakeImageFullScreen.value = false
         }
@@ -773,7 +806,10 @@ class MapFragment : Fragment() {
             MakeImageFullscreen(postingData.value, onDismissRequest = { shouldMakeImageFullScreen.value = false })
         }
 
+        // if user presses Directions button
         if (shouldTrackRoute.value) {
+            // compose object made drawing a polyline that can be clicked on to open google maps
+            // and line should update as user moves
             TrackRoute(postingData.value, currentLocation!!, onDismissRequest = { shouldTrackRoute.value = false })
             Toast.makeText(
                 context,
@@ -787,6 +823,8 @@ class MapFragment : Fragment() {
         }
     }
 
+    // compose object made drawing a polyline that can be clicked on to open google maps
+    // and line should update as user moves
     @Composable
     fun TrackRoute(postingData: PostingData, currentLocation: Location, onDismissRequest: () -> Unit)
     {
@@ -801,12 +839,9 @@ class MapFragment : Fragment() {
                     val directions =
                         DirectionsFinderResultsRepository().fetchDirections(destination, origin)
                     val polyline = directions.routes[0].overviewPolyline.points
-                    Log.d(ContentValues.TAG, "directions: $directions")
-                    Log.d(ContentValues.TAG, "polyline: $polyline")
                     decodedPolyline = decodePolyLines(polyline)
                     polylineToShow = decodedPolyline
                     polylineDestination = postingData.reverseGeocodedAddress
-                    Log.d(ContentValues.TAG, "decoded polyline: $decodedPolyline")
 
                 }
                 catch(ex: Exception){
@@ -817,7 +852,7 @@ class MapFragment : Fragment() {
         }
     }
 
-    // will improve appearance of this in future
+    // just a compose object that shows full screen image and have a back button
     @Composable
     fun MakeImageFullscreen(postingData: PostingData, onDismissRequest: () -> Unit) {
         Box(
@@ -850,13 +885,15 @@ class MapFragment : Fragment() {
                             .align(Alignment.TopEnd)
                             .padding(16.dp)
                     ) {
-                        Text(text = "Done")
+                        Text(text = getString(R.string.done))
                     }
                 }
             }
         }
     }
 
+    // Filters available through settings button
+    // directly modifies filteredPostingDataList which modifies the MarkerPostings in MapScreen object
     @Composable
     fun SearchSettingsMenu(
         filteredPostingDataList: MutableState<MutableList<PostingData>>,
@@ -876,8 +913,6 @@ class MapFragment : Fragment() {
             }
         }
 
-        val args = MapFragmentArgs.fromBundle(requireArguments())
-        val user = args.user
         AnimatedVisibility(
             visible = isVisible.value,
             enter = slideInHorizontally(
@@ -910,21 +945,21 @@ class MapFragment : Fragment() {
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = "Search Settings",
+                            text = getString(R.string.search_settings),
                             style = MaterialTheme.typography.headlineSmall,
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
 
                         Divider(modifier = Modifier.padding(vertical = 8.dp))
 
+                        // All functions below just applies filter through data
                         SettingsSlider(
-                            label = "Distance",
+                            label = getString(R.string.distance),
                             value = remember { mutableFloatStateOf(2.5f) },
                             range = 1f..10f,
                             steps = 18,
                             onValueChange = { distanceVal ->
                                 filteredPostingDataList.value = postingDataList.filter { data ->
-                                    Log.d("TAG", currentLocation.toString())
                                     calculateDistance(
                                         LatLng(data.lat, data.lng),
                                         LatLng(
@@ -937,7 +972,7 @@ class MapFragment : Fragment() {
                         )
 
                         SettingsStarRating(
-                            label = "Minimum Star Rating",
+                            label = getString(R.string.min_star_rating),
                             rating = remember { mutableIntStateOf(3) },
                             onRatingChange = { minRating ->
                                 // used lifecycle scope from chat
@@ -973,15 +1008,10 @@ class MapFragment : Fragment() {
 
                                         try {
                                             averageRating = deferredRating.await()
-                                            Log.d("TAG", "$userId: $averageRating")
                                         } catch (e: Exception) {
                                             Log.e("TAG", "Error waiting for user statistics: $e")
                                         }
 
-                                        Log.d(
-                                            "TAG",
-                                            "$userId: $averageRating, MinRating: $minRating"
-                                        )
                                         averageRating >= minRating
                                     }
                                     filteredPostingDataList.value = filteredList.toMutableList()
@@ -993,7 +1023,7 @@ class MapFragment : Fragment() {
                             modifier = Modifier.padding(vertical = 8.dp)
                         ) {
                             Text(
-                                text = "Show Claimed Posts",
+                                text = getString(R.string.show_claimed_post),
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Spacer(modifier = Modifier.weight(1f))
@@ -1015,6 +1045,7 @@ class MapFragment : Fragment() {
         }
     }
 
+    // distance slider called from settings
     @Composable
     fun SettingsSlider(
         label: String,
@@ -1039,13 +1070,14 @@ class MapFragment : Fragment() {
                 modifier = Modifier.padding(top = 8.dp)
             )
             Text(
-                text = "${String.format("%.1f", value.value)} miles",
+                text = "${String.format("%.1f", value.value)} " + getString(R.string.miles),
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.align(Alignment.End)
             )
         }
     }
 
+    // used by distance slider, written by ChatGPT
     private fun calculateDistance(location1: LatLng, location2: LatLng): Double {
         val earthRadius = 6371.0 // in kilometers
         val lat1 = Math.toRadians(location1.latitude)
@@ -1061,6 +1093,8 @@ class MapFragment : Fragment() {
 
         return earthRadius * c * 0.621371
     }
+    // star rating filter for showing only items with average rating
+    // of user that has higher than selected star rating
     @Composable
     fun SettingsStarRating(
         label: String,
@@ -1127,37 +1161,4 @@ class MapFragment : Fragment() {
         }
         return decoded
     }
-
-    @Composable
-    fun rememberMapViewWithLifecycle(): MapView {
-        val context = LocalContext.current
-        val mapView = remember { MapView(context) }
-
-        // Makes MapView follow the lifecycle of this composable
-        val lifecycleObserver = rememberMapLifecycleObserver(mapView)
-        val lifecycle = LocalLifecycleOwner.current.lifecycle
-        DisposableEffect(lifecycle) {
-            lifecycle.addObserver(lifecycleObserver)
-            onDispose {
-                lifecycle.removeObserver(lifecycleObserver)
-            }
-        }
-        return mapView
-    }
-
-    @Composable
-    fun rememberMapLifecycleObserver(mapView: MapView): LifecycleEventObserver =
-        remember(mapView) {
-            LifecycleEventObserver { _, event ->
-                when (event) {
-                    Lifecycle.Event.ON_CREATE -> mapView.onCreate(Bundle())
-                    Lifecycle.Event.ON_START -> mapView.onStart()
-                    Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                    Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                    Lifecycle.Event.ON_STOP -> mapView.onStop()
-                    Lifecycle.Event.ON_DESTROY -> mapView.onDestroy()
-                    else -> throw IllegalStateException()
-                }
-            }
-        }
 }

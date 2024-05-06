@@ -3,7 +3,6 @@ package com.example.pickuppal
 import android.content.Context
 import android.content.Intent
 import android.content.IntentSender
-import android.util.Log
 import com.google.android.gms.auth.api.identity.BeginSignInRequest
 import com.google.android.gms.auth.api.identity.BeginSignInRequest.GoogleIdTokenRequestOptions
 import com.google.android.gms.auth.api.identity.SignInClient
@@ -23,11 +22,9 @@ class GoogleOAuthClient(
 
     suspend fun signIn(): Result<IntentSender?> {
         return try {
-            Log.d("TAG", "HIIII")
             val result = oneTapClient.beginSignIn(buildSignInRequest()).await()
             Result.success(result?.pendingIntent?.intentSender)
         } catch (e: Exception) {
-            Log.d("TAG", "HII")
             e.printStackTrace()
             Result.failure(e)
         }
@@ -38,8 +35,6 @@ class GoogleOAuthClient(
         val googleIdToken = credential.googleIdToken
         val googleCredentials = GoogleAuthProvider.getCredential(googleIdToken, null)
         return try {
-            Log.d("TAG", "HI")
-
             val user = auth.signInWithCredential(googleCredentials).await().user
             SignInResult(
                 data = user?.run {
@@ -53,7 +48,6 @@ class GoogleOAuthClient(
             )
         } catch (e: Exception) {
             e.printStackTrace()
-            Log.d("TAG", e.toString())
             if (e is CancellationException) throw e
             SignInResult(
                 data = null,

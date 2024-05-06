@@ -1,5 +1,6 @@
 package com.example.pickuppal
 
+// data class that defines a UserStatistics object
 data class UserStatistics(
     var userID: String = "",
     var numItemsPosted: Int = 0,
@@ -7,6 +8,7 @@ data class UserStatistics(
     var numRatings: Int = 0,
     var totalRating: Int = 0,
 ) {
+    // function that creates and returns map of UserStatistics attribute names along with their values
     fun toMap(): Map<String, Any> {
         return mapOf(
             "userID" to userID,
