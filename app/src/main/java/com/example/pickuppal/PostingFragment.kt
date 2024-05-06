@@ -1,7 +1,9 @@
 package com.example.pickuppal
 
 import FirebaseAPI
+import android.Manifest
 import android.content.ContentValues
+import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
@@ -70,6 +72,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -80,6 +83,7 @@ import coil.request.ImageRequest
 import com.google.android.gms.maps.model.LatLng
 
 class PostingFragment : Fragment() {
+    private val cameraPermission = 1
     private val args: PostingFragmentArgs by navArgs()
     private val mutablePhotoUri: MutableLiveData<Uri?> = MutableLiveData(null)
     private var photoUri: LiveData<Uri?> = mutablePhotoUri
@@ -104,31 +108,50 @@ class PostingFragment : Fragment() {
         }
     }
 
+    // lambda expression that updates the photoUri variable so that we can
+    // display it on the page
     private val takePhoto = registerForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { didTakePhoto ->
         if (didTakePhoto && photoName != null) {
             mutablePhotoUri.value = Uri.fromFile(File(requireContext().filesDir, photoName!!))
-            Log.d("TakePhotoCallback", "photoUri: $photoUri")
         } else {
-            Toast.makeText(requireContext(), "Photo capture failed", Toast.LENGTH_SHORT).show()
+            val photoFailedMessage = resources.getString(R.string.photo_capture_fail)
+            Toast.makeText(requireContext(), photoFailedMessage, Toast.LENGTH_SHORT).show()
         }
     }
 
+    // makes sure that the device gives permission to use the camera
+    // asks for permission if one was not given
+    private fun getCameraPermission() {
+        if (ActivityCompat.checkSelfPermission(requireActivity(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(requireActivity(), listOf(Manifest.permission.CAMERA).toTypedArray(), cameraPermission)
+        }
+    }
+
+    // function to prepare necessary variables and permissions to take a picture
     private fun launchTakePicture() {
+        // checks for camera permission
+        getCameraPermission()
+
+        // creates a default file name based on time it was taken
         val timestamp = System.currentTimeMillis()
-        val name = "IMG_${timestamp}.jpeg"
+        val namePrefix = resources.getString(R.string.img_name_prefix)
+        val nameSuffix = resources.getString(R.string.img_name_suffix)
+        val name = namePrefix + timestamp + nameSuffix
         photoName = name
+
+        // save the picture in the internal storage of the app
         val pf = File(requireContext().filesDir, photoName!!)
         photoFile = pf
+        val fileProviderPackage = resources.getString(R.string.file_provider_package)
         val photoUri = FileProvider.getUriForFile(
             requireContext(),
-            "com.example.pickuppal.fileprovider",
+            fileProviderPackage,
             pf
         )
         try {
             takePhoto.launch(photoUri)
-            Log.d("launchTakePicture", "Bitmap decoded")
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -136,21 +159,27 @@ class PostingFragment : Fragment() {
 
 
 
+    // main composable fragment that holds UI elements
     @Composable
     private fun PostingContent(
         user: UserData,
         onBackPressed: () -> Unit
     ) {
+        // text edit elements on the page
         val titleState = remember { mutableStateOf(TextFieldValue()) }
         val locationState = remember { mutableStateOf(TextFieldValue()) }
         val descriptionState = remember { mutableStateOf(TextFieldValue()) }
+        // to navigate pages
         val navController = findNavController()
+        // used for places suggestions
         val repository = GooglePlacesRepository(GooglePlacesAPI.create())
         val factory = GooglePlacesViewModelFactory(repository)
         val googlePlacesViewModel: GooglePlacesViewModel = viewModel(factory = factory)
         val predictions by googlePlacesViewModel.predictions.observeAsState()
+        // stores the image that was taken
         val previewImageUri : Uri? by photoUri.observeAsState()
 
+        // Box to hold the whole screen
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -179,6 +208,7 @@ class PostingFragment : Fragment() {
                 }
             }
 
+            // main interaction on the page
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -188,12 +218,14 @@ class PostingFragment : Fragment() {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // title
                 TitleTextField(
                     value = titleState.value,
                     onValueChange = { titleState.value = it },
-                    placeholderText = "Add a title"
+                    placeholderText = resources.getString(R.string.add_title_hint)
                 )
 
+                // location
                 LocationTextField(
                     value = locationState.value,
                     onValueChange = {
@@ -201,14 +233,14 @@ class PostingFragment : Fragment() {
                         googlePlacesViewModel.getPredictions(it.text)
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholderText = "Add a Location"
+                    placeholderText = resources.getString(R.string.add_location_hint)
                 )
 
+                // finds predictions for the location
                 when (val resource = predictions) {
                     is Resource.Success -> {
-                        LazyRow(
-
-                        ) {
+                        // creates a row that you can scroll horizontally for location suggestions
+                        LazyRow{
                             itemsIndexed(resource.data?.predictions ?: emptyList()) { _, prediction ->
                                 Surface(
                                     modifier = Modifier
@@ -241,7 +273,7 @@ class PostingFragment : Fragment() {
                     }
                     is Resource.Error -> {
                         Text(
-                            text = "Error fetching location suggestions",
+                            text = resources.getString(R.string.location_predictions_error),
                             color = Color.Red,
                             modifier = Modifier.padding(8.dp)
                         )
@@ -254,8 +286,9 @@ class PostingFragment : Fragment() {
                         )
                     }
                     else -> {
+                        // default when no location is entered
                         Text(
-                            text = "Enter a location for suggestions",
+                            text = resources.getString(R.string.location_predictions_hint),
                             modifier = Modifier
                                 .padding(16.dp)
                                 .align(Alignment.Start),
@@ -264,19 +297,22 @@ class PostingFragment : Fragment() {
                     }
                 }
 
+                // custom compose picture button to take a picture
                 PictureButton(
                     onClick = { launchTakePicture() },
                     modifier = Modifier.padding(start = 16.dp, bottom = 16.dp, top = 0.dp, end = 16.dp),
                     imageUri = previewImageUri
                 )
 
+                // description text field
                 DescriptionTextField(
                     value = descriptionState.value,
                     onValueChange = { descriptionState.value = it },
-                    placeholderText = "Add a Description",
+                    placeholderText = resources.getString(R.string.description_hint),
                     modifier =  Modifier.verticalScroll(rememberScrollState())
                 )
 
+                // submit button
                 Button(
                     onClick = {
                         onPostClicked(
@@ -294,13 +330,14 @@ class PostingFragment : Fragment() {
                         .padding(horizontal = 16.dp),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Post")
+                    Text(resources.getString(R.string.posting_button))
                 }
 
             }
         }
     }
 
+    // custom compose text field for descriptions
     @Composable
     fun DescriptionTextField(
         value: TextFieldValue,
@@ -319,7 +356,7 @@ class PostingFragment : Fragment() {
                 onValueChange = onValueChange,
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState()), // Make it scrollable
+                    .verticalScroll(rememberScrollState()),
                 placeholder = {
                     if (placeholderText != null) {
                         Text(placeholderText, color = Color.Gray)
@@ -338,8 +375,7 @@ class PostingFragment : Fragment() {
         }
     }
 
-
-
+    // custom compose text field for location
     @Composable
     fun PostingTextField(
         value: TextFieldValue,
@@ -372,6 +408,7 @@ class PostingFragment : Fragment() {
         )
     }
 
+    // custom compose text field for titles
     @Composable
     fun TitleTextField(
         value: TextFieldValue,
@@ -410,21 +447,25 @@ class PostingFragment : Fragment() {
         )
     }
 
+    // function that handles post validation
+    // checks if the user has the required information and a valid location set
+    // adds the data to the firebase storage if the post is valid
     private fun onPostClicked(title : String, location : String, user : UserData, description : String, navController : NavController) {
         val photoUri = mutablePhotoUri.value
+        // requires users to have a title, location, and picture to post
+        // description is optional
         if (hasRequiredInputs(title, location, photoUri)) {
             val firebaseAPI = FirebaseAPI()
             photoUri?.let { uri ->
                 val bitmap = BitmapFactory.decodeStream(context?.contentResolver?.openInputStream(uri))
                 val id = UUID.randomUUID().toString()
-                val name:String = photoName?: "defaultphotoname"
+                val name:String = photoName?: resources.getString(R.string.default_photo_name)
 
                 // geocoding address to lat + long
                 lifecycleScope.launch {
                     try {
                         val geocodeResp =
                             GeocoderResultsRepository().fetchGeocoderResults(location)
-                        Log.d(ContentValues.TAG, "Response received: $geocodeResp")
                         if (geocodeResp.results[0].geometry.location.lat != null) {
                             // once lat and long have been retrieved by geocoding,
                             // reverse geocode to get cleanly formatted address
@@ -432,19 +473,13 @@ class PostingFragment : Fragment() {
                             val lng = geocodeResp.results[0].geometry.location.lng.toDouble()
 
                             val latLng = LatLng(lat, lng)
-                            //setCameraPosition(latLng)
                             val viewModel: SharedViewModel by activityViewModels()
                             viewModel.setCameraPosition(latLng)
 
                             try {
                                 val reverseGeocodeResp =
                                     ReverseGeocoderResultsRepository().fetchReverseGeocoderResults("$lat, $lng")
-                                Log.d(ContentValues.TAG, "reverse geocoding: $reverseGeocodeResp")
                                 val reverseGeocodedAddress = reverseGeocodeResp.results[0].address
-                                Log.d(ContentValues.TAG, "address: $reverseGeocodedAddress")
-
-                                Log.d(ContentValues.TAG, "Lat: $lat")
-                                Log.d(ContentValues.TAG, "Lat: $lng")
 
                                 firebaseAPI.uploadImage(bitmap, name) { imageUrl ->
                                     if (imageUrl != null) {
@@ -468,7 +503,7 @@ class PostingFragment : Fragment() {
                                     } else {
                                         Toast.makeText(
                                             context,
-                                            "Error. Please try again.",
+                                            resources.getString(R.string.posting_error_message),
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     }
@@ -491,7 +526,8 @@ class PostingFragment : Fragment() {
 
 
         } else {
-            Toast.makeText(context, "Please fill in title, location, and image", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, resources.getString(R.string.post_warning_message),
+                Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -558,7 +594,7 @@ class PostingFragment : Fragment() {
             } else {
                 Icon(
                     painter = painterResource(id = R.drawable.add_a_photo),
-                    contentDescription = "Add Photo",
+                    contentDescription = resources.getString(R.string.picture_button_desc),
                     modifier = Modifier
                         .align(Alignment.Center)
                         .size(48.dp),

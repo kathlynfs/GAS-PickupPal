@@ -23,7 +23,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,6 +34,7 @@ import androidx.navigation.fragment.findNavController
 import com.google.android.gms.auth.api.identity.Identity
 import kotlinx.coroutines.launch
 
+// handles user sign in, the first page that opens
 class SignInFragment : Fragment() {
     // Google OneTap, which is the recommended way to build sign in for a
     // Firebase application requires that the user links a google account
@@ -71,6 +71,7 @@ class SignInFragment : Fragment() {
             setContent {
                 SignInScreen(
                     onSignInClick = {
+                        // handles user sign in, communicates with googleOAuth
                         lifecycleScope.launch {
                             val signInResult = googleOAuthClient.signIn()
                             if (signInResult.isSuccess) {
@@ -81,13 +82,14 @@ class SignInFragment : Fragment() {
                             } else {
                                 Toast.makeText(
                                     requireContext(),
-                                    "This app uses OneTap. Please connect a Google account to your device.",
+                                    resources.getString(R.string.one_tap_warning),
                                     Toast.LENGTH_LONG
                                 ).show()
                             }
 
                         }
                     },
+                    // navigate to map screen
                     onSignInSuccess = { userData ->
                         val action = SignInFragmentDirections.signInToMap(userData)
                         findNavController().navigate(action)
@@ -95,7 +97,7 @@ class SignInFragment : Fragment() {
                     onSignInFailure = {
                         Toast.makeText(
                             requireContext(),
-                            "Sign in unsuccessful",
+                            resources.getString(R.string.sign_in_error),
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -149,7 +151,6 @@ class SignInFragment : Fragment() {
             ) {
                 Text(getString(R.string.sign_in))
             }
-
         }
     }
 }
