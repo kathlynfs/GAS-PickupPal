@@ -1,5 +1,6 @@
 package com.example.pickuppal
 
+// data class that defines a PostingData object
 data class PostingData(
     var postID: String,
     val userID: String,
@@ -14,8 +15,7 @@ data class PostingData(
     var photoUrl: String,
     var rating: Int,
 ) {
-    constructor() : this("", "", "", "", 0.0, 0.0,"", "",false, "", "", 0)
-
+    // function that creates and returns map of PostingData attribute names along with their values
     fun toMap(): Map<String, Any> {
         return mapOf(
             "userID" to userID,

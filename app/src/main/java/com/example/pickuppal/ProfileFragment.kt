@@ -5,7 +5,6 @@ import PostingDataListCallBack
 import UserStatisticsCallback
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -107,13 +106,11 @@ class ProfileFragment : Fragment() {
                     }
 
                     override fun onPostingDataListError(e: Exception) {
-                        Log.e("TAG", "Error retrieving posting data list", e)
                     }
                 })
             }
 
             override fun onUserStatisticsError(e: Exception) {
-                Log.e("TAG", "Error retrieving user statistics", e)
                 composeView.setContent {
                     // Show an error message or handle the error scenario
                     Text("Error retrieving user statistics")
@@ -298,7 +295,6 @@ class ProfileFragment : Fragment() {
                     )
                     IconButton(
                         onClick = {
-                            Log.d("TAG", item.dataId)
                             onDeleteClick(item.dataId)
                         }
                     ) {
