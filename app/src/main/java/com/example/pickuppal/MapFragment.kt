@@ -33,11 +33,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -55,7 +53,6 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DockedSearchBar
@@ -99,10 +96,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import coil.compose.AsyncImage
-import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.GoogleMapOptions
 import com.google.android.gms.maps.MapView
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.ButtCap
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -112,7 +107,6 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
-import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
@@ -129,7 +123,6 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
-
 
 class MapFragment : Fragment() {
     private var currentLocation: Location? = null
@@ -216,8 +209,6 @@ class MapFragment : Fragment() {
         return currentLocationDeterminer.determineCurrentLocation()
     }
 
-
-
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun MapScreen(
@@ -226,7 +217,6 @@ class MapFragment : Fragment() {
     ) {
         val args = MapFragmentArgs.fromBundle(requireArguments())
         val user = args.user
-        val mapView = rememberMapViewWithLifecycle()
         val currentLocation = remember { mutableStateOf<Location?>(null) }
         val coroutineScope = rememberCoroutineScope()
         val searchQuery = remember { mutableStateOf("") }
@@ -237,7 +227,6 @@ class MapFragment : Fragment() {
         var cameraPositionState = rememberCameraPositionState()
         val showClaimedPosts = remember { mutableStateOf(true) }
         val filteredPostingDataList = remember { mutableStateOf(if (showClaimedPosts.value) postingDataList else postingDataList.filter { !it.claimed }.toMutableList()) }
-        val polyline = remember{mutableStateOf(polylineToShow)}
         var uiSettings by remember {
             mutableStateOf(
                 MapUiSettings(
@@ -245,7 +234,6 @@ class MapFragment : Fragment() {
                     zoomGesturesEnabled = true
                 )
             ) }
-
 
         LaunchedEffect(Unit)
         {
@@ -259,7 +247,6 @@ class MapFragment : Fragment() {
                 currentLocation.value = location
                 delay(1000)
             }
-
         }
 
         if(cameraPosition == null) {

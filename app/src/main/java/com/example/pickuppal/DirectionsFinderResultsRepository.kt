@@ -6,6 +6,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.create
 
+// Repository for responses from API call to Google Maps Directions API
 class DirectionsFinderResultsRepository {
     private val directionsFinder: DirectionsFinder
 

@@ -2,9 +2,7 @@ package com.example.pickuppal
 
 import FirebaseAPI
 import android.content.ContentValues
-import android.content.Context
 import android.graphics.BitmapFactory
-import android.location.Location
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -80,8 +78,6 @@ import coil.compose.rememberAsyncImagePainter
 import java.util.UUID
 import coil.request.ImageRequest
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.tasks.Task
-
 
 class PostingFragment : Fragment() {
     private val args: PostingFragmentArgs by navArgs()
