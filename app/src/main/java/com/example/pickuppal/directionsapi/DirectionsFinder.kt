@@ -1,12 +1,13 @@
 package com.example.pickuppal.directionsapi
 
-
 import com.example.pickuppal.BuildConfig
-import com.example.pickuppal.directionsapi.Response
 import retrofit2.http.GET
 import retrofit2.http.Query
 
 private const val API_KEY = BuildConfig.MAPS_API_KEY
+
+// Interface that queries the API call to Directions API
+// using destination and origin
 interface DirectionsFinder
 {
     @GET("maps/api/directions/json")
