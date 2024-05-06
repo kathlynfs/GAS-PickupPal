@@ -169,7 +169,6 @@ class MapFragment : Fragment() {
 
                 override fun onChildRemoved(snapshot: DataSnapshot) {
                     val data = snapshot.getValue(PostingData::class.java)
-                    Log.d(ContentValues.TAG, "snapshot.value = $data ")
                     postingDataList.remove(data)
                 }
 
@@ -323,7 +322,7 @@ class MapFragment : Fragment() {
                     .align(Alignment.BottomEnd)
                     .padding(16.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Item", tint = Color.Black)
+                Icon(Icons.Default.Add, contentDescription = getString(R.string.add_item), tint = Color.Black)
             }
 
             // Current location button to recenter map
@@ -344,7 +343,7 @@ class MapFragment : Fragment() {
                 ) {
                     Icon(
                         imageVector = Icons.Filled.LocationOn,
-                        contentDescription = "Current Location",
+                        contentDescription = getString(R.string.current_location),
                         tint = Color.Black
                     )
                 }
@@ -355,7 +354,7 @@ class MapFragment : Fragment() {
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Settings,
-                        contentDescription = "Settings",
+                        contentDescription = getString(R.string.settings),
                         tint = Color.Black
                     )
                 }
@@ -386,7 +385,7 @@ class MapFragment : Fragment() {
                 },
                 active = isSearchActive.value,
                 onActiveChange = { isSearchActive.value = it },
-                placeholder = { Text("Search") },
+                placeholder = { Text(getString(R.string.search)) },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(16.dp)
@@ -401,7 +400,7 @@ class MapFragment : Fragment() {
                     ) {
                         Icon(
                             imageVector = if (isSearchActive.value) Icons.AutoMirrored.Filled.ArrowBack else Icons.Filled.Search,
-                            contentDescription = if (isSearchActive.value) "Back" else "Search"
+                            contentDescription = if (isSearchActive.value) getString(R.string.back) else getString(R.string.search)
                         )
                     }
                 },
@@ -415,7 +414,7 @@ class MapFragment : Fragment() {
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Clear,
-                                contentDescription = "Clear"
+                                contentDescription = getString(R.string.clear)
                             )
                         }
                     } else {
@@ -428,7 +427,7 @@ class MapFragment : Fragment() {
                         ) {
                             AsyncImage(
                                 model = profilePictureUrl,
-                                contentDescription = "Profile Picture",
+                                contentDescription = getString(R.string.profile_picture),
                                 modifier = Modifier
                                     .size(24.dp)
                                     .clip(CircleShape)
@@ -620,7 +619,7 @@ class MapFragment : Fragment() {
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = "Title",
+                            text = getString(R.string.title),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(bottom = 1.dp)
                         )
@@ -630,7 +629,7 @@ class MapFragment : Fragment() {
                             modifier = Modifier.padding(bottom = 5.dp)
                         )
                         Text(
-                            text = "Location",
+                            text = getString(R.string.location),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(bottom = 1.dp)
                         )
@@ -640,7 +639,7 @@ class MapFragment : Fragment() {
                             modifier = Modifier.padding(bottom = 5.dp)
                         )
                         Text(
-                            text = "Description",
+                            text = getString(R.string.description),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(bottom = 1.dp)
                         )
@@ -651,7 +650,7 @@ class MapFragment : Fragment() {
                         )
 
                         Text(
-                            text = "Image & Directions",
+                            text = getString(R.string.image_and_directions),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(bottom = 1.dp)
                         )
@@ -691,17 +690,17 @@ class MapFragment : Fragment() {
                                     icon = {
                                         Icon(
                                             Icons.Filled.Place,
-                                            "Extended floating action button."
+                                            getString(R.string.track_route_text)
                                         )
                                     },
-                                    text = { Text(text = "Directions") },
+                                    text = { Text(text = getString(R.string.directions)) },
                                     modifier = Modifier.padding(start = 16.dp)
                                 )
                             }
                         }
 
                         Text(
-                            text = "Claiming",
+                            text = getString(R.string.claiming),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(top = 8.dp)
                         )
@@ -733,10 +732,10 @@ class MapFragment : Fragment() {
                                 // too far to claim, or available to claim)
                                 Text(
                                     text = when {
-                                        isOwnItem -> "You can't claim your own item!"
-                                        postingData.value.claimed -> "Already Claimed"
-                                        distance > MAX_CLAIM_DISTANCE -> "Too far to claim"
-                                        else -> "Claim"
+                                        isOwnItem -> getString(R.string.claim_own_item_err)
+                                        postingData.value.claimed -> getString(R.string.already_claimed)
+                                        distance > MAX_CLAIM_DISTANCE -> getString(R.string.too_far)
+                                        else -> getString(R.string.claim)
                                     }
                                 )
                             }
@@ -750,7 +749,7 @@ class MapFragment : Fragment() {
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "Rating:",
+                                            text = getString(R.string.rating),
                                             style = MaterialTheme.typography.bodyLarge
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
@@ -779,7 +778,7 @@ class MapFragment : Fragment() {
                                     }
                                 } else {
                                     Text(
-                                        text = "You have already submitted a rating for this item.",
+                                        text = getString(R.string.already_rated),
                                         style = MaterialTheme.typography.bodyMedium,
                                         modifier = Modifier.padding(start = 16.dp)
                                     )
@@ -840,12 +839,9 @@ class MapFragment : Fragment() {
                     val directions =
                         DirectionsFinderResultsRepository().fetchDirections(destination, origin)
                     val polyline = directions.routes[0].overviewPolyline.points
-                    Log.d(ContentValues.TAG, "directions: $directions")
-                    Log.d(ContentValues.TAG, "polyline: $polyline")
                     decodedPolyline = decodePolyLines(polyline)
                     polylineToShow = decodedPolyline
                     polylineDestination = postingData.reverseGeocodedAddress
-                    Log.d(ContentValues.TAG, "decoded polyline: $decodedPolyline")
 
                 }
                 catch(ex: Exception){
@@ -889,7 +885,7 @@ class MapFragment : Fragment() {
                             .align(Alignment.TopEnd)
                             .padding(16.dp)
                     ) {
-                        Text(text = "Done")
+                        Text(text = getString(R.string.done))
                     }
                 }
             }
@@ -949,7 +945,7 @@ class MapFragment : Fragment() {
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = "Search Settings",
+                            text = getString(R.string.search_settings),
                             style = MaterialTheme.typography.headlineSmall,
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
@@ -958,13 +954,12 @@ class MapFragment : Fragment() {
 
                         // All functions below just applies filter through data
                         SettingsSlider(
-                            label = "Distance",
+                            label = getString(R.string.distance),
                             value = remember { mutableFloatStateOf(2.5f) },
                             range = 1f..10f,
                             steps = 18,
                             onValueChange = { distanceVal ->
                                 filteredPostingDataList.value = postingDataList.filter { data ->
-                                    Log.d("TAG", currentLocation.toString())
                                     calculateDistance(
                                         LatLng(data.lat, data.lng),
                                         LatLng(
@@ -977,7 +972,7 @@ class MapFragment : Fragment() {
                         )
 
                         SettingsStarRating(
-                            label = "Minimum Star Rating",
+                            label = getString(R.string.min_star_rating),
                             rating = remember { mutableIntStateOf(3) },
                             onRatingChange = { minRating ->
                                 // used lifecycle scope from chat
@@ -1013,7 +1008,6 @@ class MapFragment : Fragment() {
 
                                         try {
                                             averageRating = deferredRating.await()
-                                            Log.d("TAG", "$userId: $averageRating")
                                         } catch (e: Exception) {
                                             Log.e("TAG", "Error waiting for user statistics: $e")
                                         }
@@ -1029,7 +1023,7 @@ class MapFragment : Fragment() {
                             modifier = Modifier.padding(vertical = 8.dp)
                         ) {
                             Text(
-                                text = "Show Claimed Posts",
+                                text = getString(R.string.show_claimed_post),
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Spacer(modifier = Modifier.weight(1f))
@@ -1076,7 +1070,7 @@ class MapFragment : Fragment() {
                 modifier = Modifier.padding(top = 8.dp)
             )
             Text(
-                text = "${String.format("%.1f", value.value)} miles",
+                text = "${String.format("%.1f", value.value)} " + getString(R.string.miles),
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.align(Alignment.End)
             )
