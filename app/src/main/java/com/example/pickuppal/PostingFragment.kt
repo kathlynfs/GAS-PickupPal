@@ -89,7 +89,6 @@ class PostingFragment : Fragment() {
     private var photoUri: LiveData<Uri?> = mutablePhotoUri
     private var photoName: String? = null
     private var photoFile: File? = null
-    //private lateinit var cameraPositionSetter: CameraPositionSetter
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -108,16 +107,6 @@ class PostingFragment : Fragment() {
             }
         }
     }
-
-    /*override fun onAttach(context: Context) {
-        super.onAttach(context)
-        cameraPositionSetter = context as CameraPositionSetter
-    }
-
-    private fun setCameraPosition(latLng: LatLng) {
-        cameraPositionSetter.setCameraPosition(latLng)
-    }*/
-
 
     private val takePhoto = registerForActivityResult(
         ActivityResultContracts.TakePicture()
@@ -209,12 +198,6 @@ class PostingFragment : Fragment() {
                     placeholderText = "Add a title"
                 )
 
-                PictureButton(
-                    onClick = { launchTakePicture() },
-                    modifier = Modifier.padding(start = 16.dp, bottom = 16.dp, top = 0.dp, end = 16.dp),
-                    imageUri = previewImageUri
-                )
-
                 LocationTextField(
                     value = locationState.value,
                     onValueChange = {
@@ -284,6 +267,12 @@ class PostingFragment : Fragment() {
                         )
                     }
                 }
+
+                PictureButton(
+                    onClick = { launchTakePicture() },
+                    modifier = Modifier.padding(start = 16.dp, bottom = 16.dp, top = 0.dp, end = 16.dp),
+                    imageUri = previewImageUri
+                )
 
                 DescriptionTextField(
                     value = descriptionState.value,

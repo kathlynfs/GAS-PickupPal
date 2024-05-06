@@ -236,6 +236,7 @@ class MapFragment : Fragment() {
         var cameraPositionState = rememberCameraPositionState()
         val showClaimedPosts = remember { mutableStateOf(true) }
         val filteredPostingDataList = remember { mutableStateOf(if (showClaimedPosts.value) postingDataList else postingDataList.filter { !it.claimed }.toMutableList()) }
+        val polyline = remember{mutableStateOf(polylineToShow)}
         var uiSettings by remember {
             mutableStateOf(
                 MapUiSettings(
