@@ -34,6 +34,7 @@ import androidx.navigation.fragment.findNavController
 import com.google.android.gms.auth.api.identity.Identity
 import kotlinx.coroutines.launch
 
+// handles user sign in, the first page that opens
 class SignInFragment : Fragment() {
     private val googleOAuthClient by lazy {
         GoogleOAuthClient(
@@ -66,6 +67,7 @@ class SignInFragment : Fragment() {
             setContent {
                 SignInScreen(
                     onSignInClick = {
+                        // handles user sign in, communicates with googleOAuth
                         lifecycleScope.launch {
                             val signInResult = googleOAuthClient.signIn()
                             if (signInResult.isSuccess) {
@@ -83,6 +85,7 @@ class SignInFragment : Fragment() {
 
                         }
                     },
+                    // navigate to map screen
                     onSignInSuccess = { userData ->
                         val action = SignInFragmentDirections.signInToMap(userData)
                         findNavController().navigate(action)
