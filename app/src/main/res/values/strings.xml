@@ -18,4 +18,7 @@
     <string name="posting_button">Post</string>
     <string name="post_warning_message">Please fill in title, location, and image</string>
     <string name="picture_button_desc">Camera Picture Button</string>
+    <string name="one_tap_warning">This app uses OneTap. Please connect a Google account to your device.</string>
+    <string name="sign_in_error">Sign in unsuccessful</string>
+    <string name="sign_in_button">Sign In</string>
 </resources>

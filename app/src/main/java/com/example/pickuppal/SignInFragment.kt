@@ -23,7 +23,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -77,7 +76,7 @@ class SignInFragment : Fragment() {
                             } else {
                                 Toast.makeText(
                                     requireContext(),
-                                    "This app uses OneTap. Please connect a Google account to your device.",
+                                    resources.getString(R.string.one_tap_warning),
                                     Toast.LENGTH_LONG
                                 ).show()
                             }
@@ -91,7 +90,7 @@ class SignInFragment : Fragment() {
                     onSignInFailure = {
                         Toast.makeText(
                             requireContext(),
-                            "Sign in unsuccessful",
+                            resources.getString(R.string.sign_in_error),
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -101,13 +100,13 @@ class SignInFragment : Fragment() {
         }
     }
 
+    // custom compose sign in screen UI
     @Composable
     fun SignInScreen(
         onSignInClick: () -> Unit,
         onSignInSuccess: (UserData) -> Unit,
         onSignInFailure: () -> Unit
     ) {
-        val context = LocalContext.current
         val state by viewModel.state.collectAsStateWithLifecycle()
 
         LaunchedEffect(state.isSignInSuccessful) {
@@ -133,7 +132,7 @@ class SignInFragment : Fragment() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "PickUp Pal",
+                text = resources.getString(R.string.app_name),
                 fontSize = 50.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
@@ -143,7 +142,7 @@ class SignInFragment : Fragment() {
                 onClick = onSignInClick,
                 modifier = Modifier.padding(top = 16.dp)
             ) {
-                Text("Sign In")
+                Text(resources.getString(R.string.sign_in_button))
             }
 
         }
