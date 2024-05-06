@@ -36,6 +36,10 @@ import kotlinx.coroutines.launch
 
 // handles user sign in, the first page that opens
 class SignInFragment : Fragment() {
+    // Google OneTap, which is the recommended way to build sign in for a
+    // Firebase application requires that the user links a google account
+    // to their android phone. If this is not the case, user will receive message
+    // stating to link a google account to their device
     private val googleOAuthClient by lazy {
         GoogleOAuthClient(
             context = requireContext(),
@@ -103,7 +107,7 @@ class SignInFragment : Fragment() {
         }
     }
 
-    // custom compose sign in screen UI
+    // Used this for login https://www.youtube.com/watch?v=zCIfBbm06QM
     @Composable
     fun SignInScreen(
         onSignInClick: () -> Unit,
@@ -135,7 +139,7 @@ class SignInFragment : Fragment() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = resources.getString(R.string.app_name),
+                text = getString(R.string.pickup_pal),
                 fontSize = 50.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
@@ -145,9 +149,8 @@ class SignInFragment : Fragment() {
                 onClick = onSignInClick,
                 modifier = Modifier.padding(top = 16.dp)
             ) {
-                Text(resources.getString(R.string.sign_in_button))
+                Text(getString(R.string.sign_in))
             }
-
         }
     }
 }

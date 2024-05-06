@@ -2,7 +2,7 @@ package com.example.pickuppal
 
 import java.io.Serializable
 
-// relevant user data
+// Used this for login https://www.youtube.com/watch?v=zCIfBbm06QM
 data class SignInResult(
     val data: UserData?,
     val errorMessage: String?
