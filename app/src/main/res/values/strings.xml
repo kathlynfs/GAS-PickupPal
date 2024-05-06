@@ -4,7 +4,6 @@
     <string name="location_permission_denied">Location permission is denied, please allow permission</string>
     <string name="track_button">Directions</string>
     <string name="track_route">Click path to open full directions in Google Maps!</string>
-<<<<<<< HEAD
     <string name="photo_capture_fail">Photo capture failed</string>
     <string name="file_provider_package">com.example.pickuppal.fileprovider</string>
     <string name="img_name_prefix">IMG_</string>
