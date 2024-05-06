@@ -149,30 +149,25 @@ class PostingFragment : Fragment() {
     private fun getAnnotations(photoName: String) {
         val imageLabelling = ImageLabelling()
         imageLabelling.getLabels(photoName, maxResults = 10)
-            .addOnSuccessListener { httpsCallableResult ->
-                try {
-                    val gson = Gson()
-                    val data = httpsCallableResult.data
-                    if (data != null) {
-                        val jsonString = gson.toJson(data)
-                        val labelAnnotations = gson.fromJson(jsonString, JsonArray::class.java)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    if (task.result != null) {
                         val labels = mutableListOf<String>()
-                        for (label in labelAnnotations) {
+                        for (label in task.result!!.asJsonArray[0].asJsonObject["labelAnnotations"].asJsonArray) {
                             val labelObj = label.asJsonObject
-                            val description = labelObj["description"].asString
+                            val text = labelObj["description"]
                             val confidence = labelObj["score"].asDouble
-                            Log.d("getLabels", "image annotations: $description ($confidence)")
-                            labels.add(description)
+                            labels.add(text.toString())
+                            Log.d("getLabels", "image annotations: $text ($confidence)")
                         }
                     } else {
-                        Log.e("GetLabels", "Invalid data format received")
+                        Log.d("getLabels", "no labels returned")
                     }
-                } catch (e: Exception) {
-                    Log.e("GetLabels", "Error parsing response data", e)
+
+                } else {
+                    Log.e("GetLabels", "Failed to get labels", task.exception)
+
                 }
-            }
-            .addOnFailureListener { exception ->
-                Log.e("GetLabels", "Failed to get labels", exception)
             }
     }
 

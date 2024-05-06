@@ -2,6 +2,7 @@ package com.example.pickuppal
 
 import com.google.android.gms.tasks.Task
 import com.google.firebase.Firebase
+import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.HttpsCallableResult
 import com.google.firebase.functions.functions
 import com.google.gson.Gson
@@ -12,11 +13,8 @@ import com.google.gson.JsonParser
 import com.google.gson.JsonPrimitive
 
 class ImageLabelling {
-    private val functions = Firebase.functions
+    private val functions: FirebaseFunctions = Firebase.functions
 
-    init {
-        functions.useEmulator("10.0.2.2", 8080)
-    }
 
     //https://firebase.google.com/docs/ml/android/label-images#kotlin+ktx_2
     private fun getLabelDetectionJsonRequest(imageName: String, maxResults: Int) : JsonObject {
@@ -47,11 +45,15 @@ class ImageLabelling {
         return toReturn
     }
 
-    fun getLabels(imageName: String, maxResults: Int): Task<HttpsCallableResult> {
+    fun getLabels(imageName: String, maxResults: Int): Task<JsonElement> {
         val requestJson = getLabelDetectionJsonRequest(imageName, maxResults).toString()
 
         return functions
             .getHttpsCallable("labelImage")
             .call(requestJson)
+            .continueWith { task ->
+                val result = task.result?.data
+                JsonParser.parseString(Gson().toJson(result))
+            }
     }
 }

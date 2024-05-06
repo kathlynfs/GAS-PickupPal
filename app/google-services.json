@@ -15,11 +15,35 @@
       },
       "oauth_client": [
         {
+          "client_id": "669911105755-31um461rpk3e9c2jpcu4b19v0at4srel.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.pickuppal",
+            "certificate_hash": "94dbe5f958498a64a589077c5b17475ec4e43a4f"
+          }
+        },
+        {
+          "client_id": "669911105755-4a07r8v0nvsobppkkcfpom2dmscbcd5s.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.pickuppal",
+            "certificate_hash": "5832286a821e6a8bbf8b8af64a852667e48ed108"
+          }
+        },
+        {
           "client_id": "669911105755-505eb0uh0pv349i8p7dh55vq2pv1juug.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.pickuppal",
             "certificate_hash": "d62e45d38f62bc1c4df43fa9b35c42d2bb695887"
+          }
+        },
+        {
+          "client_id": "669911105755-ma2853656d9p4r0e8dtqm7kl4bkdeib9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.pickuppal",
+            "certificate_hash": "338b0c04851cd5622f581f8e14739633ee0b2b7a"
           }
         },
         {
