@@ -605,7 +605,7 @@ class MapFragment : Fragment() {
                 Card(
                     modifier = Modifier
                         .align(BottomCenter)
-                        .height(500.dp)
+                        .height(450.dp)
                         .fillMaxWidth()
                         .clickable(enabled = false) {},
                     shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
@@ -620,19 +620,9 @@ class MapFragment : Fragment() {
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = getString(R.string.title),
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.padding(bottom = 1.dp)
-                        )
-                        Text(
                             text = postingData.value.title,
                             style = MaterialTheme.typography.headlineMedium,
                             modifier = Modifier.padding(bottom = 5.dp)
-                        )
-                        Text(
-                            text = getString(R.string.location),
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.padding(bottom = 1.dp)
                         )
                         Text(
                             text = postingData.value.location,
@@ -648,12 +638,6 @@ class MapFragment : Fragment() {
                             text = postingData.value.description,
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.padding(bottom = 5.dp)
-                        )
-
-                        Text(
-                            text = getString(R.string.image_and_directions),
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.padding(bottom = 1.dp)
                         )
                         Box(
                             modifier = Modifier.fillMaxWidth(),

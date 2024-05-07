@@ -66,7 +66,7 @@ class FirebaseAPI {
         getUserStatistics(claimingUser, object : UserStatisticsCallback {
             override fun onUserStatisticsReceived(userStatistics: UserStatistics) {
                 val updatedStatistics = userStatistics.copy(
-                    numItemsClaimed = userStatistics.numItemsPosted + 1
+                    numItemsClaimed = userStatistics.numItemsClaimed + 1
                 )
                 updateUserStatistics(updatedStatistics)
             }
