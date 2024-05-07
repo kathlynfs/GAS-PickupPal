@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -79,14 +80,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.BottomCenter
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -597,7 +601,6 @@ class MapFragment : Fragment() {
                 targetOffsetY = { fullHeight -> fullHeight },
                 animationSpec = tween(durationMillis = 300)
             ),
-
         ) {
             Box(
                 modifier = Modifier
@@ -615,6 +618,29 @@ class MapFragment : Fragment() {
                         containerColor = MaterialTheme.colorScheme.surface
                     )
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                            .clickable(onClick = {
+                                shouldMakeImageFullScreen.value = true
+                            })
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer(rotationZ = 90f)
+                        ) {
+                            AsyncImage(
+                                model = postingData.value.photoUrl,
+                                contentDescription = postingData.value.description,
+                                modifier = Modifier.fillMaxWidth(),
+                                contentScale = ContentScale.Crop,
+                            )
+                        }
+                    }
+
                     // text information of item
                     Column(
                         modifier = Modifier
@@ -622,160 +648,135 @@ class MapFragment : Fragment() {
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = postingData.value.title,
+
+                            text = postingData.value.title.uppercase(),
+
                             style = MaterialTheme.typography.headlineMedium,
                             modifier = Modifier.padding(bottom = 5.dp)
                         )
                         Text(
                             text = postingData.value.location,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(bottom = 5.dp)
-                        )
-                        Text(
-                            text = getString(R.string.description),
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.padding(bottom = 1.dp)
-                        )
-                        Text(
-                            text = postingData.value.description,
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.padding(bottom = 5.dp)
                         )
+                        Text(
+                            text = getString(R.string.description) +
+                                    if (postingData.value.description.isNotEmpty()) {
+                                        postingData.value.description
+                                    } else {
+                                        getString(R.string.default_description)
+                                    },
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(bottom = 5.dp)
+                        )
+
                         Box(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 5.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(200.dp)
-                                    .padding(5.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                    .height(200.dp),
+                                horizontalArrangement = Arrangement.Center,
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .aspectRatio(1f)
-                                        .padding(end = 16.dp)
-                                ) {
-                                    AsyncImage(
-                                        model = postingData.value.photoUrl,
-                                        contentDescription = postingData.value.description,
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .graphicsLayer(rotationZ = 90f)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable(onClick = {
-                                                shouldMakeImageFullScreen.value = true
-                                            }),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                }
-                                ExtendedFloatingActionButton(
+
+                                // Directions button
+                                IconButton(
+                                    icon = painterResource(id = R.drawable.direction),
                                     onClick = { shouldTrackRoute.value = !shouldTrackRoute.value },
-                                    icon = {
-                                        Icon(
-                                            Icons.Filled.Place,
-                                            getString(R.string.track_route_text)
-                                        )
-                                    },
-                                    text = { Text(text = getString(R.string.directions)) },
-                                    modifier = Modifier.padding(start = 16.dp)
+                                    hint = getString(R.string.directions)
                                 )
-                            }
-                        }
 
-                        Text(
-                            text = getString(R.string.claiming),
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
+                                Spacer(modifier = Modifier.width(20.dp))
 
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 5.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            // claim item button
-                            Button(
-                                onClick = {
-                                    if (!isOwnItem) {
-                                        coroutineScope.launch {
-                                            postingRef.child("claimed").setValue(true).await()
-                                            postingRef.child("claimedBy").setValue(user.userId).await()
+                                // Claim button
+                                IconButtonClaim(
+                                    icon = painterResource(id = R.drawable.claim_hand),
+                                    onClick = {
+                                        if (!isOwnItem) {
+                                            coroutineScope.launch {
+                                                postingRef.child("claimed").setValue(true).await()
+                                                postingRef.child("claimedBy").setValue(user.userId)
+                                                    .await()
+                                            }
+                                            firebaseAPI.claimItem(user)
                                         }
-                                        firebaseAPI.claimItem(user)
-                                    }
-                                },
-                                modifier = Modifier
-                                    .defaultMinSize(minWidth = 56.dp, minHeight = 56.dp)
-                                    .padding(4.dp),
-                                enabled = !postingData.value.claimed && !isOwnItem && distance <= MAX_CLAIM_DISTANCE,
-                                shape = CircleShape,
-                            ) {
-                                // handles all 4 scenario (can't claim own item, already claimed,
-                                // too far to claim, or available to claim)
-                                Text(
-                                    text = when {
-                                        isOwnItem -> getString(R.string.claim_own_item_err)
-                                        postingData.value.claimed -> getString(R.string.already_claimed)
-                                        distance > MAX_CLAIM_DISTANCE -> getString(R.string.too_far)
-                                        else -> getString(R.string.claim)
-                                    }
+                                    },
+                                    hint = getString(R.string.claim),
+                                    isOwnItem = isOwnItem,
+                                    isItemClaimed = postingData.value.claimed,
+                                    isToofar = distance > MAX_CLAIM_DISTANCE,
+                                    enabled =  postingData.value.claimed && !isOwnItem && distance <= MAX_CLAIM_DISTANCE,
+                                    context = requireContext()
                                 )
                             }
-
-                            // if postingData's claimed by userId value is same as current user's userId
-                            // and rating is 0 (means not claimed [can only rate between 1-5 starts]),
-                            // user is then finally given option to give rating
-                            if (postingData.value.claimedBy == user.userId) {
-                                if (postingData.value.rating == 0) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = getString(R.string.rating),
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        repeat(5) { index ->
-                                            Icon(
-                                                painter = if (postingData.value.rating >= index + 1) painterResource(R.drawable.star_filled) else painterResource(R.drawable.star_outline),
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .size(24.dp)
-                                                    .clickable {
-                                                        val newRating = index + 1
-                                                        coroutineScope.launch {
-                                                            postingRef
-                                                                .child("rating")
-                                                                .setValue(newRating)
-                                                                .await()
-                                                            postingData.value.rating = newRating
+                                // if postingData's claimed by userId value is same as current user's userId
+                                // and rating is 0 (means not claimed [can only rate between 1-5 starts]),
+                                // user is then finally given option to give rating
+                                if (postingData.value.claimedBy == user.userId) {
+                                    if (postingData.value.rating == 0) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(top = 20.dp),
+                                        ) {
+                                            Text(
+                                                text = getString(R.string.rating),
+                                                style = MaterialTheme.typography.bodyLarge
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            repeat(5) { index ->
+                                                Icon(
+                                                    painter = if (postingData.value.rating >= index + 1) painterResource(
+                                                        R.drawable.star_filled
+                                                    ) else painterResource(R.drawable.star_outline),
+                                                    contentDescription = null,
+                                                    modifier = Modifier
+                                                        .size(24.dp)
+                                                        .clickable {
+                                                            val newRating = index + 1
+                                                            coroutineScope.launch {
+                                                                postingRef
+                                                                    .child("rating")
+                                                                    .setValue(newRating)
+                                                                    .await()
+                                                                postingData.value.rating = newRating
+                                                            }
+                                                            firebaseAPI.submitRating(
+                                                                postingData.value,
+                                                                newRating
+                                                            )
                                                         }
-                                                        firebaseAPI.submitRating(
-                                                            postingData.value,
-                                                            newRating
-                                                        )
-                                                    }
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(top = 20.dp),
+                                        ) {
+                                            Text(
+                                                text = getString(R.string.already_rated),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                modifier = Modifier.padding(start = 16.dp)
                                             )
                                         }
                                     }
-                                } else {
-                                    Text(
-                                        text = getString(R.string.already_rated),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        modifier = Modifier.padding(start = 16.dp)
-                                    )
                                 }
                             }
                         }
+
+
+
                     }
+
+
                 }
-            }
+
         }
+
 
         LaunchedEffect(isVisible.value) {
             if (!isVisible.value) {
@@ -809,6 +810,125 @@ class MapFragment : Fragment() {
             polylineToShow = null
         }
     }
+
+    // custom buttons for the card, directons
+    @Composable
+    fun IconButton (
+        icon: Painter,
+        onClick: () -> Unit,
+        hint: String = ""
+    ) {
+        val backgroundColor = MaterialTheme.colorScheme.primary
+
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.clickable(onClick = onClick)
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .fillMaxSize()
+                        .aspectRatio(1f)
+                        .background(backgroundColor, shape = CircleShape),
+                ) {
+                    Icon(
+                        painter = icon,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            if (hint.isNotEmpty()) {
+                Text(
+                    text = hint,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Black,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
+        }
+    }
+
+    // Custom Button for claiming
+    @Composable
+    fun IconButtonClaim(
+        icon: Painter,
+        onClick: () -> Unit,
+        hint: String = "",
+        isOwnItem: Boolean,
+        isItemClaimed: Boolean,
+        isToofar: Boolean,
+        enabled: Boolean,
+        context: Context
+
+    ) {
+        val backgroundColor =
+            if (enabled) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                Color.LightGray
+            }
+
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.clickable(
+                // handles all 4 scenario (can't claim own item, already claimed,
+                // too far to claim, or available to claim)
+                onClick = {
+                    if (isOwnItem) {
+                        Toast.makeText(context, R.string.claim_own_item_err, Toast.LENGTH_SHORT).show()
+                    } else if (isItemClaimed) {
+                        Toast.makeText(context, R.string.already_claimed, Toast.LENGTH_SHORT).show()
+                    } else if (isToofar) {
+                        Toast.makeText(context, R.string.too_far, Toast.LENGTH_SHORT).show()
+                    } else if (enabled) {
+                        onClick()
+                    }
+                }
+
+            )
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .fillMaxSize()
+                        .aspectRatio(1f)
+                        .background(backgroundColor, shape = CircleShape),
+                ) {
+                    Icon(
+                        painter = icon,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            if (hint.isNotEmpty()) {
+                Text(
+                    text = hint,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Black,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
+        }
+    }
+
+
+
 
     // compose object made drawing a polyline that can be clicked on to open google maps
     // and line should update as user moves
@@ -862,15 +982,14 @@ class MapFragment : Fragment() {
                         model = postingData.photoUrl,
                         contentDescription = postingData.description,
                         modifier = Modifier
-                            .graphicsLayer(rotationZ = 90f)
                             .fillMaxSize(),
-                        contentScale = ContentScale.FillWidth
+                        contentScale = ContentScale.FillHeight
                     )
                     ExtendedFloatingActionButton(
                         onClick = { onDismissRequest() },
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(16.dp)
+                            .padding(8.dp)
                     ) {
                         Text(text = getString(R.string.done))
                     }
