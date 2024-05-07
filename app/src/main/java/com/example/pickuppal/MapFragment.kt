@@ -610,7 +610,7 @@ class MapFragment : Fragment() {
                 Card(
                     modifier = Modifier
                         .align(BottomCenter)
-                        .height(450.dp)
+                        .height(500.dp)
                         .fillMaxWidth()
                         .clickable(enabled = false) {},
                     shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
@@ -622,6 +622,7 @@ class MapFragment : Fragment() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(200.dp)
+                            .padding(top = 15.dp)
                             .clip(shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
                             .clickable(onClick = {
                                 shouldMakeImageFullScreen.value = true
@@ -709,7 +710,7 @@ class MapFragment : Fragment() {
                                     isOwnItem = isOwnItem,
                                     isItemClaimed = postingData.value.claimed,
                                     isToofar = distance > MAX_CLAIM_DISTANCE,
-                                    enabled =  postingData.value.claimed && !isOwnItem && distance <= MAX_CLAIM_DISTANCE,
+                                    enabled =  !postingData.value.claimed && !isOwnItem && distance <= MAX_CLAIM_DISTANCE,
                                     context = requireContext()
                                 )
                             }
@@ -719,8 +720,8 @@ class MapFragment : Fragment() {
                                 if (postingData.value.claimedBy == user.userId) {
                                     if (postingData.value.rating == 0) {
                                         Row(
+                                            modifier = Modifier.padding(top = 50.dp),
                                             verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.padding(top = 20.dp),
                                         ) {
                                             Text(
                                                 text = getString(R.string.rating),
@@ -754,8 +755,8 @@ class MapFragment : Fragment() {
                                         }
                                     } else {
                                         Row(
+                                            modifier = Modifier.padding(top = 50.dp),
                                             verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.padding(top = 20.dp),
                                         ) {
                                             Text(
                                                 text = getString(R.string.already_rated),
@@ -982,8 +983,9 @@ class MapFragment : Fragment() {
                         model = postingData.photoUrl,
                         contentDescription = postingData.description,
                         modifier = Modifier
+                            .graphicsLayer(rotationZ = 90f)
                             .fillMaxSize(),
-                        contentScale = ContentScale.FillHeight
+                        contentScale = ContentScale.FillWidth
                     )
                     ExtendedFloatingActionButton(
                         onClick = { onDismissRequest() },
