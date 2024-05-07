@@ -484,6 +484,7 @@ class MapFragment : Fragment() {
             }
         }
 
+        val distanceState = remember { mutableStateOf(2.5f) }
         // pass in filteredPostingDataList to modify listing in memory
         if (isSettingsMenuOpen.value) {
             SearchSettingsMenu(
@@ -493,7 +494,8 @@ class MapFragment : Fragment() {
                 onAnimationFinished = {
                     isSettingsMenuAnimationFinished.value = true
                 },
-                showClaimedPosts
+                showClaimedPosts,
+                distanceState
             )
             LaunchedEffect(isSettingsMenuAnimationFinished.value) {
                 if (isSettingsMenuAnimationFinished.value) {
@@ -885,7 +887,8 @@ class MapFragment : Fragment() {
         onDismissRequest: () -> Unit,
         isVisible: MutableState<Boolean>,
         onAnimationFinished: () -> Unit,
-        showClaimedPosts: MutableState<Boolean>
+        showClaimedPosts: MutableState<Boolean>,
+        distanceState: MutableState<Float>
     ) {
         LaunchedEffect(filteredPostingDataList) {
             isVisible.value = true
@@ -940,7 +943,7 @@ class MapFragment : Fragment() {
                         // All functions below just applies filter through data
                         SettingsSlider(
                             label = getString(R.string.distance),
-                            value = remember { mutableFloatStateOf(2.5f) },
+                            value = distanceState,
                             range = 1f..10f,
                             steps = 18,
                             onValueChange = { distanceVal ->
