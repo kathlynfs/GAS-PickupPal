@@ -28,7 +28,7 @@
     <string name="clear">Clear</string>
     <string name="profile_picture">Profile Picture</string>
     <string name="title">Title</string>
-    <string name="description">Description</string>
+    <string name="description">Description:&#160;</string>
     <string name="location">Location</string>
     <string name="image_and_directions">Image &amp; Directions</string>
     <string name="track_route_text">Track Route</string>
@@ -57,4 +57,5 @@
     <string name="listings">Listings</string>
     <string name="delete">Delete</string>
     <string name="listing_image">Listing Image</string>
+    <string name="default_description">No description</string>
 </resources>
