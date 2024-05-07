@@ -86,6 +86,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -755,7 +756,7 @@ class MapFragment : Fragment() {
                                         Spacer(modifier = Modifier.width(8.dp))
                                         repeat(5) { index ->
                                             Icon(
-                                                imageVector = if (postingData.value.rating >= index + 1) Icons.Filled.Star else Icons.Outlined.Star,
+                                                painter = if (postingData.value.rating >= index + 1) painterResource(R.drawable.star_filled) else painterResource(R.drawable.star_outline),
                                                 contentDescription = null,
                                                 modifier = Modifier
                                                     .size(24.dp)
@@ -1112,7 +1113,7 @@ class MapFragment : Fragment() {
             ) {
                 repeat(5) { index ->
                     Icon(
-                        imageVector = if (rating.value > index) Icons.Filled.Star else Icons.Outlined.Star,
+                        painter = if (rating.value > index) painterResource(R.drawable.star_filled) else painterResource(R.drawable.star_outline),
                         contentDescription = null,
                         modifier = Modifier.clickable {
                             val newRating = index + 1
